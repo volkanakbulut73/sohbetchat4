@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ChatModule from './components/ChatWidget';
 import LandingPage from './components/LandingPage';
 import AuthModal from './components/AuthModal';
-import { LayoutGrid, MessageSquare, Users, Settings, LogOut, Search, Menu, Hash, Folder, ChevronDown, X, Lock, Unlock, Mail, MailWarning, UserMinus, Loader2 } from 'lucide-react';
+import { LayoutGrid, MessageSquare, Users, Settings, LogOut, Search, Menu, Hash, Folder, ChevronDown, X, Lock, Unlock, Mail, MailWarning, UserMinus, Loader2, AlertCircle } from 'lucide-react';
 import { Room, User, Message, Role } from './types';
 import { 
   pb, 
@@ -30,6 +30,8 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>('');
   const [activeRoomMessages, setActiveRoomMessages] = useState<Message[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
   
   // UI State
   const [roomMenuOpen, setRoomMenuOpen] = useState(false);
@@ -60,6 +62,7 @@ const App: React.FC = () => {
         setUsers([]);
         setActiveRoomMessages([]);
         setActiveRoomId('');
+        setDataError(null);
       }
     });
 
@@ -70,6 +73,8 @@ const App: React.FC = () => {
 
   // 2. Load Data (Rooms, Users, Blocks)
   const loadAppData = async () => {
+    setDataLoading(true);
+    setDataError(null);
     try {
       // Fetch Users
       const usersData = await getUsers();
@@ -83,13 +88,18 @@ const App: React.FC = () => {
 
       // Fetch Rooms
       const roomsData = await getPublicRooms();
-      
       setRooms(roomsData);
+      
       if (roomsData.length > 0) {
         handleSwitchRoom(roomsData[0].id, roomsData);
+      } else {
+         setDataError("Hiç oda bulunamadı. Lütfen yöneticinizle iletişime geçin.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load app data", err);
+      setDataError("Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -220,12 +230,43 @@ const App: React.FC = () => {
     );
   }
 
-  // 2. Logged In but loading room -> Loading Spinner
-  if (!activeRoom) {
-     return <div className="flex h-screen items-center justify-center bg-white"><Loader2 className="w-8 h-8 animate-spin text-green-600"/></div>;
+  // 2. Data Error State
+  if (dataError) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-gray-50 text-center p-4">
+        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Hata Oluştu</h2>
+        <p className="text-gray-600 mb-6">{dataError}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+        >
+          Sayfayı Yenile
+        </button>
+        <button 
+          onClick={handleLogout}
+          className="mt-4 text-sm text-gray-500 hover:underline"
+        >
+          Çıkış Yap
+        </button>
+      </div>
+    );
   }
 
-  // 3. Main Chat Interface
+  // 3. Logged In but loading room -> Loading Spinner
+  if (!activeRoom) {
+     return (
+       <div className="flex flex-col h-screen items-center justify-center bg-white gap-4">
+         <Loader2 className="w-10 h-10 animate-spin text-green-600"/>
+         <p className="text-gray-500 text-sm font-medium animate-pulse">
+           {dataLoading ? "Sohbet odaları yükleniyor..." : "Bağlantı kuruluyor..."}
+         </p>
+         <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-600 mt-4 underline">İptal ve Çıkış</button>
+       </div>
+     );
+  }
+
+  // 4. Main Chat Interface
   return (
     <div className="flex h-screen bg-white font-sans overflow-hidden">
       

@@ -1,8 +1,9 @@
 import PocketBase from 'pocketbase';
 import { User, Message, Room, Role } from '../types';
 
-// Initialize the PocketBase client using the IP from your screenshot
-const pb = new PocketBase('http://72.62.178.90:8090');
+// Use the HTTPS domain provided in your previous context to avoid mixed content errors
+const PB_URL = 'https://api.workigomchat.online';
+const pb = new PocketBase(PB_URL);
 
 // --- AUTH ---
 
@@ -25,17 +26,20 @@ export const isAuthenticated = () => {
 // --- USERS ---
 
 export const getUsers = async (): Promise<User[]> => {
-  const records = await pb.collection('users').getFullList({
-    sort: '-created',
-  });
-  return records as unknown as User[];
+  try {
+    const records = await pb.collection('users').getFullList({
+      sort: '-created',
+    });
+    return records as unknown as User[];
+  } catch (e) {
+    console.error("Error fetching users:", e);
+    return [];
+  }
 };
 
 // --- ROOMS ---
 
 export const getPublicRooms = async (): Promise<Room[]> => {
-  // Assuming you have a 'rooms' collection. 
-  // If not, we might need to create records for the public rooms first.
   try {
     const records = await pb.collection('rooms').getFullList({
       filter: 'type = "public"',
@@ -49,16 +53,19 @@ export const getPublicRooms = async (): Promise<Room[]> => {
 };
 
 export const getPrivateRoom = async (currentUserId: string, targetUserId: string): Promise<Room | null> => {
-  // Logic: Find a room where both users are participants and type is private
-  // Note: PocketBase filtering on array fields needs simplified logic usually
-  const records = await pb.collection('rooms').getList(1, 1, {
-    filter: `type = "private" && participants ~ "${currentUserId}" && participants ~ "${targetUserId}"`,
-  });
-  
-  if (records.items.length > 0) {
-    return records.items[0] as unknown as Room;
+  try {
+      const records = await pb.collection('rooms').getList(1, 1, {
+        filter: `type = "private" && participants ~ "${currentUserId}" && participants ~ "${targetUserId}"`,
+      });
+      
+      if (records.items.length > 0) {
+        return records.items[0] as unknown as Room;
+      }
+      return null;
+  } catch (e) {
+      console.error("Error getting private room", e);
+      return null;
   }
-  return null;
 };
 
 export const createPrivateRoom = async (currentUserId: string, targetUser: User): Promise<Room> => {
@@ -77,12 +84,17 @@ export const createPrivateRoom = async (currentUserId: string, targetUser: User)
 // --- MESSAGES ---
 
 export const getMessages = async (roomId: string): Promise<Message[]> => {
-  const records = await pb.collection('messages').getList(1, 50, {
-    filter: `room_id = "${roomId}"`,
-    sort: 'created', // Get oldest first for chat history
-    expand: 'user_id',
-  });
-  return records.items as unknown as Message[];
+  try {
+      const records = await pb.collection('messages').getList(1, 50, {
+        filter: `room_id = "${roomId}"`,
+        sort: 'created', 
+        expand: 'user_id',
+      });
+      return records.items as unknown as Message[];
+  } catch (e) {
+      console.error("Error fetching messages", e);
+      return [];
+  }
 };
 
 export const sendMessageToPB = async (
@@ -106,8 +118,6 @@ export const sendMessageToPB = async (
 export const subscribeToRoom = (roomId: string, callback: (msg: Message) => void) => {
   return pb.collection('messages').subscribe('*', (e) => {
     if (e.action === 'create' && e.record.room_id === roomId) {
-        // Expand the user if needed, though realtime events send raw record usually
-        // We might need to fetch the user details separately or hope for expand support in newer PB versions
         callback(e.record as unknown as Message);
     }
   });
@@ -139,12 +149,16 @@ export const blockUser = async (currentUserId: string, targetUserId: string) => 
 
 export const unblockUser = async (currentUserId: string, targetUserId: string) => {
   // Find the record first
-  const records = await pb.collection('banned_users').getList(1, 1, {
-    filter: `user_id = "${currentUserId}" && target_user_id = "${targetUserId}"`
-  });
-  
-  if (records.items.length > 0) {
-    await pb.collection('banned_users').delete(records.items[0].id);
+  try {
+      const records = await pb.collection('banned_users').getList(1, 1, {
+        filter: `user_id = "${currentUserId}" && target_user_id = "${targetUserId}"`
+      });
+      
+      if (records.items.length > 0) {
+        await pb.collection('banned_users').delete(records.items[0].id);
+      }
+  } catch (e) {
+      console.error("Error unblocking user", e);
   }
 };
 
