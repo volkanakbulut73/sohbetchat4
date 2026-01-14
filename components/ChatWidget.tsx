@@ -13,7 +13,7 @@ interface ChatModuleProps {
 }
 
 const COLORS = [
-  '#000000', // Black (Default)
+  '#f1f5f9', // Whiteish
   '#EF4444', // Red
   '#F59E0B', // Amber
   '#10B981', // Emerald
@@ -51,39 +51,6 @@ const EMOJI_CATEGORIES = [
       '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', 
       '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿', '🦔'
     ]
-  },
-  {
-    name: 'Yiyecek & İçecek',
-    emojis: [
-      '🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🥝', '🍅', '🥥', '🥑', 
-      '🍆', '🥔', '🥕', '🌽', '🌶', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰', '🍞', '🥐', '🥖', '🥨', '🥯', 
-      '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔', '🍟', '🍕', '🌭', '🥪', '🌮', '🌯', '🥙', '🧆', '🥚', '🍳', 
-      '🥘', '🍲', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', 
-      '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', 
-      '🍭', '🍮', '🍯', '🍼', '🥛', '☕️', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🥤', '🧃'
-    ]
-  },
-  {
-    name: 'Aktivite & Spor',
-    emojis: [
-      '⚽️', '🏀', '🏈', '⚾️', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', 
-      '⛳️', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂', '🪂', '🏋️', '🤼', 
-      '🤸', '⛹️', '🤺', '🤾', '🏌️', '🏇', '🧘', '🏄', '🏊', '🤽', '🚣', '🧗', '🚵', '🚴', '🏆', '🥇', '🥈', '🥉', 
-      '🏅', '🎖', '🏵', '🎗', '🎫', '🎟', '🎪', '🤹', '🎭', '🩰', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', 
-      '🎺', '🎸', '🪕', '🎻', '🎲', '♟', '🎯', '🎳', '🎮', '🎰', '🧩'
-    ]
-  },
-  {
-    name: 'Nesneler & Semboller',
-    emojis: [
-      '⌚️', '📱', '📲', '💻', '⌨️', '🖥', '🖨', '🖱', '🖲', '🕹', '🗜', '💽', '💾', '💿', '📀', '📼', '📷', '📸', 
-      '📹', '🎥', '📽', '🎞', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙', '🎚', '🎛', '🧭', '⏱', '⏲', '⏰', '🕰', 
-      '⏳', '⌛️', '📡', '🔋', '🔌', '💡', '🔦', '🕯', '🪔', '🧯', '🛢', '💸', '💵', '💴', '💶', '💷', '💰', '💳', 
-      '💎', '⚖️', '🧰', '🔧', '🔨', '⚒', '🛠', '⛏', '🔩', '⚙️', '🧱', '⛓', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', 
-      '🗡', '⚔️', '🛡', '🚬', '⚰️', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳', '💊', '💉', '🩸', 
-      '🧬', '🦠', '🧫', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', 
-      '💖', '💘', '💝'
-    ]
   }
 ];
 
@@ -97,7 +64,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedColor, setSelectedColor] = useState('#f1f5f9');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +88,8 @@ const ChatModule: React.FC<ChatModuleProps> = ({
     if (!inputValue.trim() || isLoading || !currentUser) return;
 
     const content = inputValue.trim();
-    const color = selectedColor !== '#000000' ? selectedColor : undefined;
+    // Default color logic for dark mode (white text)
+    const color = selectedColor !== '#f1f5f9' ? selectedColor : undefined;
 
     setInputValue('');
     setShowColorPicker(false);
@@ -176,7 +144,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
   const displayMessages = messages.filter((m) => m.role !== Role.SYSTEM);
 
   return (
-    <div className="flex flex-col w-full h-full bg-white relative overflow-hidden font-sans">
+    <div className="flex flex-col w-full h-full bg-workigom-dark relative overflow-hidden font-sans">
       
       {/* --- Chat Stream --- */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar scroll-smooth">
@@ -202,7 +170,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden
-                  ${isMe ? 'bg-slate-100 border border-slate-200' : 'bg-white border border-indigo-100'}`}>
+                  ${isMe ? 'bg-gray-800 border border-gray-700' : 'bg-black border border-gray-800'}`}>
                   {isAssistant ? (
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent" alt="Bot" className="w-full h-full" />
                   ) : (
@@ -213,25 +181,25 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 <div className="flex flex-col gap-1 min-w-0">
                   {/* Sender Name (only for others) */}
                   {!isMe && (
-                    <span className="text-xs text-gray-500 font-medium ml-1">
+                    <span className="text-xs text-gray-400 font-medium ml-1">
                        {senderName}
                     </span>
                   )}
 
                   {/* Bubble */}
-                  <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed shadow-sm transition-all
+                  <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed shadow-lg transition-all
                     ${isMe 
-                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' 
-                      : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'
+                      ? 'bg-workigom-green text-black rounded-2xl rounded-tr-none font-medium' 
+                      : 'bg-[#1a1a1e] text-gray-200 rounded-2xl rounded-tl-none border border-gray-800'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap" style={{ color: msg.color || 'inherit' }}>
+                    <div className="whitespace-pre-wrap break-words" style={{ color: msg.color || 'inherit' }}>
                       {msg.content}
                     </div>
                   </div>
                   
                   {/* Timestamp */}
-                  <div className={`text-[10px] text-gray-400 font-medium px-1 ${isMe ? 'text-right' : 'text-left'}`}>
+                  <div className={`text-[10px] text-gray-500 font-medium px-1 ${isMe ? 'text-right' : 'text-left'}`}>
                     {new Date(msg.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
@@ -244,15 +212,15 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {isLoading && (
           <div className="flex justify-start w-full animate-enter">
             <div className="flex gap-3 max-w-[70%]">
-               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-white border border-indigo-100 overflow-hidden`}>
+               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-black border border-gray-800 overflow-hidden`}>
                 <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent" alt="Bot" className="w-full h-full" />
               </div>
               <div className="flex flex-col gap-1">
                  <span className="text-xs text-gray-500 font-medium ml-1">Workigom AI</span>
-                 <div className="bg-gray-100 px-5 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2 w-fit">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                 <div className="bg-[#1a1a1e] px-5 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2 w-fit border border-gray-800">
+                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce"></span>
                  </div>
               </div>
             </div>
@@ -262,16 +230,16 @@ const ChatModule: React.FC<ChatModuleProps> = ({
       </div>
 
       {/* --- Input Area --- */}
-      <div className="bg-white p-4 md:px-8 md:py-6 z-10">
+      <div className="bg-workigom-dark p-4 md:px-8 md:py-6 z-10 border-t border-workigom-border">
         
         {/* Color Palette Popup */}
         {showColorPicker && (
-          <div className="absolute bottom-20 left-12 bg-white rounded-xl shadow-2xl border border-gray-100 p-3 flex gap-2 animate-enter z-20">
+          <div className="absolute bottom-20 left-12 bg-[#1a1a1e] rounded-xl shadow-2xl border border-gray-700 p-3 flex gap-2 animate-enter z-20">
             {COLORS.map(color => (
               <button
                 key={color}
                 onClick={() => { setSelectedColor(color); setShowColorPicker(false); inputRef.current?.focus(); }}
-                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 shadow-sm ${selectedColor === color ? 'border-gray-900 scale-110 ring-2 ring-offset-2 ring-gray-200' : 'border-transparent'}`}
+                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 shadow-sm ${selectedColor === color ? 'border-white scale-110 ring-2 ring-offset-2 ring-gray-600' : 'border-transparent'}`}
                 style={{ backgroundColor: color }}
                 type="button"
                 title={color}
@@ -282,11 +250,11 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
         {/* Emoji Picker Popup */}
         {showEmojiPicker && (
-          <div className="absolute bottom-20 right-4 sm:right-8 w-80 max-w-[calc(100vw-2rem)] h-96 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col animate-enter z-20 overflow-hidden">
+          <div className="absolute bottom-20 right-4 sm:right-8 w-80 max-w-[calc(100vw-2rem)] h-96 bg-[#1a1a1e] rounded-2xl shadow-2xl border border-gray-700 flex flex-col animate-enter z-20 overflow-hidden">
              {/* Header */}
-             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-700">Emoji Seç</span>
-                <button onClick={() => setShowEmojiPicker(false)} className="text-gray-400 hover:text-gray-600">
+             <div className="px-4 py-3 bg-[#0f0f12] border-b border-gray-700 flex items-center justify-between">
+                <span className="text-sm font-bold text-gray-300">Emoji Seç</span>
+                <button onClick={() => setShowEmojiPicker(false)} className="text-gray-400 hover:text-white">
                   <X size={18} />
                 </button>
              </div>
@@ -295,7 +263,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
              <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
                 {EMOJI_CATEGORIES.map((category) => (
                    <div key={category.name} className="mb-4">
-                      <h4 className="px-2 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm py-1 z-10">
+                      <h4 className="px-2 mb-2 text-xs font-bold text-gray-500 uppercase tracking-wider sticky top-0 bg-[#1a1a1e]/95 backdrop-blur-sm py-1 z-10">
                         {category.name}
                       </h4>
                       <div className="grid grid-cols-7 gap-1">
@@ -303,7 +271,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                           <button
                             key={emoji}
                             onClick={() => handleAddEmoji(emoji)}
-                            className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            className="w-9 h-9 flex items-center justify-center text-xl hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                           >
                             {emoji}
                           </button>
@@ -317,16 +285,16 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
         <form
           onSubmit={handleSendMessage}
-          className="relative flex items-center gap-2 bg-gray-100/70 border border-gray-200/50 rounded-full p-2 pl-4 focus-within:bg-white focus-within:border-gray-300 focus-within:shadow-sm transition-all"
+          className="relative flex items-center gap-2 bg-[#1a1a1e] border border-gray-800 rounded-full p-2 pl-4 focus-within:bg-[#1a1a1e] focus-within:border-workigom-green focus-within:shadow-[0_0_15px_rgba(0,255,157,0.1)] transition-all"
         >
           {/* Color Picker Toggle */}
           <button 
             type="button" 
             onClick={() => { setShowColorPicker(!showColorPicker); setShowEmojiPicker(false); }}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
             title="Yazı Rengi"
           >
-             <Palette className="w-5 h-5" style={{ color: selectedColor !== '#000000' ? selectedColor : undefined }} />
+             <Palette className="w-5 h-5" style={{ color: selectedColor !== '#f1f5f9' ? selectedColor : undefined }} />
           </button>
           
           <input
@@ -336,14 +304,14 @@ const ChatModule: React.FC<ChatModuleProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             style={{ color: selectedColor }}
             placeholder={`${roomName} odasına yaz...`}
-            className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-gray-800 placeholder-gray-400 text-sm md:text-base py-2 min-w-0"
+            className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-gray-200 placeholder-gray-500 text-sm md:text-base py-2 min-w-0"
             disabled={isLoading}
           />
           
           <button 
              type="button" 
              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowColorPicker(false); }}
-             className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
+             className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-yellow-400 bg-yellow-500/10' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Smile className="w-5 h-5" />
           </button>
@@ -351,10 +319,10 @@ const ChatModule: React.FC<ChatModuleProps> = ({
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-all duration-200
+            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all duration-200
               ${!inputValue.trim() || isLoading 
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md transform active:scale-95'
+                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+                : 'bg-workigom-green text-black hover:bg-green-400 hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transform active:scale-95'
               }`}
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
