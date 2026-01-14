@@ -6,6 +6,12 @@
     <title>Grok AI Chat Module</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Polyfill for process.env to prevent ReferenceError in client-side code
+      if (typeof process === "undefined") {
+        window.process = { env: { API_KEY: '' } }; // API_KEY should be injected by the environment if available
+      }
+    </script>
     <style>
       body {
         font-family: 'Inter', sans-serif;

@@ -2,9 +2,11 @@ import { GoogleGenAI } from "@google/genai";
 import { DEFAULT_MODEL } from '../constants';
 import { Message, Role } from '../types';
 
-// Initialize the Gemini client
-// Note: In production, ensure your API key is restricted to your domain
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safely retrieve API Key
+// In browser environments without a bundler, process might be undefined unless polyfilled.
+const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 /**
  * Sends the chat history to the Gemini API and retrieves the response.
