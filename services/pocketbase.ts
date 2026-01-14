@@ -1,9 +1,12 @@
 import PocketBase from 'pocketbase';
 import { User, Message, Room, Role } from '../types';
 
-// Use the HTTPS domain provided in your previous context to avoid mixed content errors
+// Use the specific HTTPS domain requested
 const PB_URL = 'https://api.workigomchat.online';
-const pb = new PocketBase(PB_URL);
+export const pb = new PocketBase(PB_URL);
+
+// Disable auto cancellation to prevent race conditions in UI effects
+pb.autoCancellation(false);
 
 // --- AUTH ---
 
@@ -161,5 +164,3 @@ export const unblockUser = async (currentUserId: string, targetUserId: string) =
       console.error("Error unblocking user", e);
   }
 };
-
-export { pb };
