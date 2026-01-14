@@ -9,13 +9,36 @@ import { Message, Role } from '../types';
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
     // 1. Safe API Key Retrieval for Browser Environment
-    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+    let apiKey: string | undefined = undefined;
+    
+    try {
+        // We access process.env.API_KEY directly. 
+        // In many build tools (Vite, Webpack), this expression is replaced by the actual string value during build.
+        // We wrap in try-catch to handle environments where 'process' is not defined and not replaced.
+        // @ts-ignore
+        apiKey = process.env.API_KEY;
+    } catch (e) {
+        // ignore ReferenceError
+    }
 
-    // 2. Check if Key is Missing
+    // 2. Simulation/Demo Mode if Key is Missing
+    // Instead of blocking the user with an error, we provide a helpful fallback response.
     if (!apiKey) {
-      console.warn("Gemini API Key missing.");
-      // Return a standard system message
-      return "Sistem: API Anahtarı yapılandırılmamış. Lütfen 'process.env.API_KEY' değerinin doğru ayarlandığından emin olun.";
+      console.warn("Gemini API Key missing. Using Demo Response.");
+      
+      // Simulate network delay for realism
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Simple context awareness for demo mode
+      const lastMsg = history.filter(m => m.type === Role.USER).pop()?.text.toLowerCase() || "";
+      
+      if (lastMsg.includes("merhaba") || lastMsg.includes("selam")) {
+          return "Merhaba! Şu anda Demo modundayım (API anahtarı eksik). Size nasıl yardımcı olabilirim?";
+      } else if (lastMsg.includes("nasılsın")) {
+          return "Teşekkürler, iyiyim! Demo modunda olsam bile yardımcı olmaya hazırım.";
+      }
+      
+      return "Sistem: API Anahtarı (process.env.API_KEY) bulunamadı. Demo yanıtı: Gerçek yapay zeka bağlantısı için lütfen API anahtarını yapılandırın.";
     }
 
     // 3. Initialize SDK
