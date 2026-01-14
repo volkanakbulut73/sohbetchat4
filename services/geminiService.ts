@@ -36,10 +36,10 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
 
     // 1. Prepare contents
     const contents = history
-      .filter(msg => msg.type !== Role.SYSTEM) // Using 'type' now
+      .filter(msg => msg.type !== Role.SYSTEM) // Filter out system messages from history if passed directly
       .map(msg => ({
         role: msg.type === Role.ASSISTANT ? 'model' : 'user', // Map our type to GenAI role
-        parts: [{ text: msg.text }], // Use 'text' instead of 'content'
+        parts: [{ text: msg.text }],
       }));
 
     // 2. Prepare config (system instruction)
@@ -50,6 +50,7 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
     }
 
     // 3. Make API call
+    // Using generateContent with the model name from constants
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: contents,
@@ -57,15 +58,16 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
     });
 
     // 4. Validate and return
+    // Accessing .text property directly as per SDK guidelines
     if (response.text) {
       return response.text;
     } else {
       console.warn("Empty response from AI model");
-      return "Hmm, sesim kesildi. (Boş cevap döndü)";
+      return "Hmm, bir şeyler ters gitti. (Boş cevap)";
     }
 
   } catch (error) {
-    console.error('AI Service Error:', error);
+    console.error('Gemini AI Service Error:', error);
     // Return a user-friendly error message if it's an API key issue
     if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("400"))) {
        return "Bağlantı hatası: API Anahtarı eksik veya geçersiz.";

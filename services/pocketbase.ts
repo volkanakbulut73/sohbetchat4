@@ -117,7 +117,7 @@ export const sendMessageToPB = async (
 ): Promise<Message> => {
   
   const isUser = role === Role.USER;
-  const senderName = userInfo?.name || (isUser ? 'Kullanıcı' : 'Grok');
+  const senderName = userInfo?.name || (isUser ? 'Kullanıcı' : 'Gemini');
   const senderAvatar = userInfo?.avatar || '';
 
   // If in demo mode

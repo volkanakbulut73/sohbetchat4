@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X, Terminal } from 'lucide-react';
+import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X } from 'lucide-react';
 import { Message, Role, User } from '../types';
-import { sendMessageToAI } from '../services/xaiService';
+import { sendMessageToAI } from '../services/geminiService';
 import { sendMessageToPB, pb } from '../services/pocketbase';
 
 interface ChatModuleProps {
@@ -35,7 +35,7 @@ const EMOJI_CATEGORIES = [
   {
     name: 'İnsanlar & Vücut',
     emojis: [
-      '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '👍', 
+      '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👉', '👆', '🖕', '👇', '👍', 
       '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦵', '🦶', '👂', 
       '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁', '👄', '💋', '👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👵', '🧓', 
       '👴', '👲', '👳', '🧕', '👮', '👷', '💂', '🕵️', '👩‍⚕️', '👨‍⚕️', '👩‍🌾', '👨‍🌾', '👩‍🍳', '👨‍🍳'
@@ -133,13 +133,13 @@ const ChatModule: React.FC<ChatModuleProps> = ({
             responseContent, 
             Role.ASSISTANT, 
             currentUser.id,
-            { name: 'Grok', avatar: '' } // AI Info
+            { name: 'Gemini', avatar: '' } // AI Info
         );
 
       } catch (aiError) {
         console.error("AI Error", aiError);
         const errorMessage = aiError instanceof Error ? aiError.message : "Bağlantı hatası.";
-        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id, { name: 'Grok', avatar: '' });
+        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id, { name: 'Gemini', avatar: '' });
       }
 
     } catch (error) {
@@ -167,7 +167,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
           const isAssistant = msg.type === Role.ASSISTANT || msg.type === 'assistant';
           
           // Use denormalized fields
-          const senderName = msg.senderName || (isAssistant ? "Grok" : "Kullanıcı");
+          const senderName = msg.senderName || (isAssistant ? "Gemini" : "Kullanıcı");
           // Construct avatar URL if filename exists
           const senderAvatar = msg.senderAvatar 
             ? `${pb.baseUrl}/api/files/users/${msg.senderId}/${msg.senderAvatar}`
@@ -184,10 +184,10 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden border
-                  ${isMe ? 'bg-gray-100 border-gray-200' : isAssistant ? 'bg-black text-white border-black' : 'bg-white border-gray-200'}`}>
+                  ${isMe ? 'bg-gray-100 border-gray-200' : isAssistant ? 'bg-gradient-to-tr from-blue-500 to-purple-500 text-white border-transparent' : 'bg-white border-gray-200'}`}>
                   {isAssistant ? (
-                    <div className="flex items-center justify-center w-full h-full bg-black text-white">
-                      <Terminal size={20} className="text-white" />
+                    <div className="flex items-center justify-center w-full h-full">
+                      <Sparkles size={20} className="text-white" />
                     </div>
                   ) : (
                     <img src={senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`} alt={senderName} className="w-full h-full object-cover" />
@@ -199,7 +199,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                   {!isMe && (
                     <span className="text-xs text-gray-500 font-medium ml-1 flex items-center gap-1">
                        {senderName}
-                       {isAssistant && <span className="bg-gray-900 text-white text-[9px] px-1 rounded font-bold tracking-wider">AI</span>}
+                       {isAssistant && <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[9px] px-1 rounded font-bold tracking-wider">AI</span>}
                     </span>
                   )}
 
@@ -231,11 +231,11 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {isLoading && (
           <div className="flex justify-start w-full animate-enter">
             <div className="flex gap-3 max-w-[70%]">
-               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-black border border-black overflow-hidden`}>
-                 <Terminal size={20} className="text-white" />
+               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-gradient-to-tr from-blue-500 to-purple-500 border-transparent overflow-hidden`}>
+                 <Sparkles size={20} className="text-white" />
               </div>
               <div className="flex flex-col gap-1">
-                 <span className="text-xs text-gray-500 font-medium ml-1">Grok</span>
+                 <span className="text-xs text-gray-500 font-medium ml-1">Gemini</span>
                  <div className="bg-white px-5 py-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-200 flex items-center gap-2 w-fit">
                     <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                     <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>

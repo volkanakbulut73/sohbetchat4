@@ -1,5 +1,5 @@
 {
-  "name": "Grok AI Module",
-  "description": "A sleek, embeddable chat widget ('Mirch' style module) powered by the Grok-4 API from x.ai. Features a modern UI with responsive design and direct API integration.",
+  "name": "Gemini AI Module",
+  "description": "A sleek, embeddable chat widget ('Mirch' style module) powered by the Google Gemini API. Features a modern UI with responsive design and direct API integration.",
   "requestFramePermissions": []
 }
