@@ -4,22 +4,19 @@ import { Message, Role } from '../types';
 
 /**
  * Sends the chat history to the Gemini API and retrieves the response.
+ * Uses the @google/genai SDK.
  */
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
-    // Safely check for API Key existence.
-    // The polyfill in index.html ensures process.env is accessible without crashing.
-    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
-
-    if (!apiKey) {
-      console.warn("Gemini API Key is missing. Please configure process.env.API_KEY.");
-      return "Sistem Mesajı: API Anahtarı eksik. Sohbet botu şu an yanıt veremiyor.";
-    }
-
-    // Initialize the GoogleGenAI client
-    const ai = new GoogleGenAI({ apiKey });
+    // Initialize the GoogleGenAI client.
+    // We use process.env.API_KEY directly.
+    // In a build environment, 'process.env.API_KEY' is typically replaced by the actual key string.
+    // We do NOT check if 'process' exists, as that can prevent the replacement from working if the bundler
+    // sees the conditional.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     // 1. Prepare Content
+    // Filter out empty messages and system prompts for the 'contents' array
     const contents = history
       .filter(msg => msg.type !== Role.SYSTEM && msg.text && msg.text.trim() !== "")
       .map(msg => ({
@@ -46,7 +43,7 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   } catch (error: any) {
     console.error('Gemini Service Error:', error);
     
-    // Provide a generic error message
-    return "Üzgünüm, şu an bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.";
+    // Fallback error message
+    return "Üzgünüm, şu an yanıt veremiyorum. (Bağlantı Hatası)";
   }
 };
