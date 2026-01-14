@@ -35,8 +35,6 @@ export const getUsers = async (): Promise<User[]> => {
     });
     return records as unknown as User[];
   } catch (e) {
-    // Suppress common fetch errors to avoid console noise
-    // console.error("Error fetching users:", e);
     return [];
   }
 };
@@ -51,10 +49,6 @@ export const getPublicRooms = async (): Promise<Room[]> => {
     });
     return records as unknown as Room[];
   } catch (e: any) {
-    // Only log critical errors, ignore 404/Not Found for demo purposes
-    if (e.status !== 404 && e.status !== 0) {
-        console.error("Error fetching rooms", e);
-    }
     return [];
   }
 };
@@ -70,60 +64,65 @@ export const getPrivateRoom = async (currentUserId: string, targetUserId: string
       }
       return null;
   } catch (e) {
-      // console.error("Error getting private room", e);
       return null;
   }
 };
 
 export const createPrivateRoom = async (currentUserId: string, targetUser: User): Promise<Room> => {
-  const data = {
-    name: targetUser.name || targetUser.username,
-    topic: 'Özel Sohbet',
-    type: 'private',
-    participants: [currentUserId, targetUser.id],
-    active: true
-  };
-  
-  const record = await pb.collection('rooms').create(data);
-  return record as unknown as Room;
+  try {
+    const data = {
+      name: targetUser.name || targetUser.username,
+      topic: 'Özel Sohbet',
+      type: 'private',
+      participants: [currentUserId, targetUser.id],
+      active: true
+    };
+    
+    const record = await pb.collection('rooms').create(data);
+    return record as unknown as Room;
+  } catch (e) {
+    throw e;
+  }
 };
 
 // --- MESSAGES ---
 
 export const getMessages = async (roomId: string): Promise<Message[]> => {
   try {
+      // Filter updated to use 'room' instead of 'room_id'
       const records = await pb.collection('messages').getList(1, 50, {
-        filter: `room_id = "${roomId}"`,
+        filter: `room = "${roomId}"`,
         sort: 'created', 
-        expand: 'user_id',
       });
       return records.items as unknown as Message[];
   } catch (e: any) {
-      // Suppress 404/Error logs for demo/missing backend
-      if (e.status !== 404 && e.status !== 0) {
-         console.error("Error fetching messages", e);
-      }
       return [];
   }
 };
 
 export const sendMessageToPB = async (
   roomId: string, 
-  content: string, 
+  text: string, 
   role: Role, 
   userId: string,
-  color?: string
+  userInfo?: { name: string; avatar: string } // Helper to populate denormalized fields
 ): Promise<Message> => {
   
-  // If in demo mode, pretend we sent it
-  if (roomId.startsWith('demo_')) {
+  const isUser = role === Role.USER;
+  const senderName = userInfo?.name || (isUser ? 'Kullanıcı' : 'Grok');
+  const senderAvatar = userInfo?.avatar || '';
+
+  // If in demo mode
+  if (roomId.startsWith('demo_') || roomId.startsWith('dm_')) {
       return {
           id: 'demo_' + Math.random().toString(36).substr(2, 9),
-          content,
-          role,
-          room_id: roomId,
-          user_id: userId,
-          color,
+          text,
+          type: role,
+          room: roomId,
+          senderId: userId,
+          senderName,
+          senderAvatar,
+          isUser,
           created: new Date().toISOString(),
           updated: new Date().toISOString(),
           collectionId: 'demo',
@@ -131,27 +130,60 @@ export const sendMessageToPB = async (
       } as Message;
   }
 
-  const data = {
-    content,
-    role,
-    room_id: roomId,
-    user_id: userId,
-    color
-  };
-  const record = await pb.collection('messages').create(data);
-  return record as unknown as Message;
+  try {
+    // New DB Structure Mapping
+    const data = {
+      text: text,
+      room: roomId,
+      senderId: userId,
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      isUser: isUser,
+      type: role // storing role as type (user, assistant, system)
+    };
+    
+    const record = await pb.collection('messages').create(data);
+    return record as unknown as Message;
+  } catch (e) {
+    // Fallback
+    return {
+          id: 'temp_error_' + Math.random().toString(36).substr(2, 9),
+          text,
+          type: role,
+          room: roomId,
+          senderId: userId,
+          senderName,
+          senderAvatar,
+          isUser,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
+          collectionId: 'demo',
+          collectionName: 'messages'
+      } as Message;
+  }
 };
 
 export const subscribeToRoom = (roomId: string, callback: (msg: Message) => void) => {
-  return pb.collection('messages').subscribe('*', (e) => {
-    if (e.action === 'create' && e.record.room_id === roomId) {
-        callback(e.record as unknown as Message);
-    }
-  });
+  if (roomId.startsWith('demo_') || roomId.startsWith('dm_')) return;
+
+  try {
+    return pb.collection('messages').subscribe('*', (e) => {
+      // Updated check: e.record.room instead of e.record.room_id
+      if (e.action === 'create' && e.record.room === roomId) {
+          callback(e.record as unknown as Message);
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
 };
 
 export const unsubscribeFromRoom = () => {
-  pb.collection('messages').unsubscribe();
+  try {
+    pb.collection('messages').unsubscribe();
+  } catch (e) {
+    // ignore
+  }
 };
 
 // --- BLOCKS / BANS ---
@@ -168,14 +200,15 @@ export const getBlockedUsers = async (currentUserId: string): Promise<string[]> 
 };
 
 export const blockUser = async (currentUserId: string, targetUserId: string) => {
-  await pb.collection('banned_users').create({
-    user_id: currentUserId,
-    target_user_id: targetUserId
-  });
+  try {
+    await pb.collection('banned_users').create({
+      user_id: currentUserId,
+      target_user_id: targetUserId
+    });
+  } catch (e) {}
 };
 
 export const unblockUser = async (currentUserId: string, targetUserId: string) => {
-  // Find the record first
   try {
       const records = await pb.collection('banned_users').getList(1, 1, {
         filter: `user_id = "${currentUserId}" && target_user_id = "${targetUserId}"`

@@ -36,17 +36,17 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
 
     // 1. Prepare contents
     const contents = history
-      .filter(msg => msg.role !== Role.SYSTEM)
+      .filter(msg => msg.type !== Role.SYSTEM) // Using 'type' now
       .map(msg => ({
-        role: msg.role === Role.ASSISTANT ? 'model' : 'user',
-        parts: [{ text: msg.content }],
+        role: msg.type === Role.ASSISTANT ? 'model' : 'user', // Map our type to GenAI role
+        parts: [{ text: msg.text }], // Use 'text' instead of 'content'
       }));
 
     // 2. Prepare config (system instruction)
-    const systemMessage = history.find(msg => msg.role === Role.SYSTEM);
+    const systemMessage = history.find(msg => msg.type === Role.SYSTEM);
     const config: any = {};
     if (systemMessage) {
-        config.systemInstruction = systemMessage.content;
+        config.systemInstruction = systemMessage.text;
     }
 
     // 3. Make API call

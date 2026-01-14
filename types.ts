@@ -14,16 +14,20 @@ export interface BaseRecord {
 }
 
 export interface Message extends BaseRecord {
-  role: Role;
-  content: string;
-  room_id: string;
-  user_id: string; // Relation to users
-  color?: string;
-  expand?: {
-    user_id?: User;
-  };
-  // UI helper props
-  timestamp?: number; 
+  text: string;          // was content
+  room: string;          // was room_id
+  senderId: string;      // was user_id
+  senderName: string;    // Denormalized name
+  senderAvatar: string;  // Denormalized avatar filename
+  isUser: boolean;       // true if user, false if AI/System
+  type: string;          // 'user', 'assistant', 'system' etc.
+  
+  // Optional media fields from DB
+  image?: string;
+  audio?: string;
+  
+  // UI helpers
+  color?: string; // Kept for UI consistency if needed, though not in DB screenshot explicitly, usually handled via type/isUser
 }
 
 export interface User extends BaseRecord {
@@ -40,10 +44,10 @@ export interface User extends BaseRecord {
 export interface Room extends BaseRecord {
   name: string;
   topic: string;
-  active: boolean; // UI state mostly
+  active: boolean;
   type: 'public' | 'private';
-  participants: string[]; // Array of User IDs
-  otherUserId?: string; // Helper for private rooms
+  participants: string[];
+  otherUserId?: string;
 }
 
 export interface RoomState extends BaseRecord {
@@ -54,7 +58,7 @@ export interface RoomState extends BaseRecord {
 }
 
 export interface BannedUser extends BaseRecord {
-  user_id: string; // The person who is blocking
-  target_user_id: string; // The person being blocked
-  room_id?: string; // Optional: block only in specific room?
+  user_id: string;
+  target_user_id: string;
+  room_id?: string;
 }

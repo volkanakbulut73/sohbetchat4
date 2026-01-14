@@ -32,7 +32,7 @@ const GUEST_USER: User = {
 };
 
 const App: React.FC = () => {
-  // Auth State - Default to Guest if no user
+  // Auth State
   const [currentUser, setCurrentUser] = useState<any>(getCurrentUser() || GUEST_USER);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -50,22 +50,18 @@ const App: React.FC = () => {
   const [allowDMs, setAllowDMs] = useState(true);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
 
-  // Refs for cleanup
+  // Refs
   const activeRoomIdRef = useRef<string>('');
 
   // 1. Initial Load & Auth Check
   useEffect(() => {
-    // If we have a real user, load data. If guest, we might load demo data or public data.
-    // We always try to load data now.
     loadAppData();
 
-    // Listen to auth changes
     const removeListener = pb.authStore.onChange((token, model) => {
-      // If logout (model is null), switch to Guest
       setCurrentUser(model || GUEST_USER);
       
       if (model) {
-        setShowAuthModal(false); // Close modal on success
+        setShowAuthModal(false);
         loadAppData();
       } else {
         // Reset state on logout but keep Guest active
@@ -74,7 +70,7 @@ const App: React.FC = () => {
         setActiveRoomMessages([]);
         setActiveRoomId('');
         setDataError(null);
-        loadAppData(); // Reload data for guest (e.g. public rooms)
+        loadAppData();
       }
     });
 
@@ -83,12 +79,12 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // 2. Load Data (Rooms, Users, Blocks)
+  // 2. Load Data
   const loadAppData = async () => {
     setDataLoading(true);
     setDataError(null);
     
-    // Default Demo Rooms (Fallback)
+    // DEMO DATA FALLBACK
     const demoRooms: Room[] = [
         { id: 'demo_genel', name: 'Genel Sohbet', topic: 'Herkesin buluşma noktası', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
         { id: 'demo_yazilim', name: 'Yazılım', topic: 'Kodlama ve teknoloji', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
@@ -106,38 +102,33 @@ const App: React.FC = () => {
         ]);
       }
 
-      // Fetch Blocked Users (Only if real user)
+      // Fetch Blocked Users
       if (pb.authStore.model) {
         try {
           const blocks = await getBlockedUsers(pb.authStore.model.id);
           setBlockedUserIds(new Set(blocks));
-        } catch (e) {
-          // Silent fail for blocks
-        }
+        } catch (e) {}
       }
 
       // Fetch Rooms
       try {
         const roomsData = await getPublicRooms();
-        if (roomsData.length > 0) {
+        if (roomsData && roomsData.length > 0) {
           setRooms(roomsData);
           handleSwitchRoom(roomsData[0].id, roomsData);
         } else {
-           // No rooms found on server, use demo
-           console.log("No rooms on server, using demo.");
+           // Fallback if empty array returned
            setRooms(demoRooms);
            handleSwitchRoom(demoRooms[0].id, demoRooms);
         }
       } catch (e) {
-         // This catches the 404 or network errors silently
-         console.warn("Backend unavailable, using demo mode.");
+         // Fallback if fetch failed (404 etc)
          setRooms(demoRooms);
          handleSwitchRoom(demoRooms[0].id, demoRooms);
       }
 
     } catch (err: any) {
-      console.error("Critical failure in loading app data", err);
-      // Fallback to demo in worst case
+      // Catastrophic failure fallback
       setRooms(demoRooms);
       handleSwitchRoom(demoRooms[0].id, demoRooms);
     } finally {
@@ -152,38 +143,57 @@ const App: React.FC = () => {
     // Skip backend logic for demo rooms
     if (activeRoomId.startsWith('demo_')) {
       setActiveRoomMessages([
-          { id: 'm1', content: 'Workigom Chat sistemine hoş geldiniz! (Light Mod)', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
+          { 
+            id: 'm1', 
+            text: 'Workigom Chat sistemine hoş geldiniz!', 
+            type: Role.SYSTEM, 
+            room: activeRoomId, 
+            senderId: 'system', 
+            senderName: 'Sistem',
+            senderAvatar: '',
+            isUser: false,
+            created: new Date().toISOString(), 
+            updated: '', 
+            collectionId: '', 
+            collectionName: '' 
+          }
       ]);
       return;
     }
 
-    // Load history first
+    // Load history
     getMessages(activeRoomId).then(msgs => {
       setActiveRoomMessages(msgs);
     }).catch(() => {
-       // Demo messages fallback
        setActiveRoomMessages([
-          { id: 'm1', content: 'Sohbet geçmişi yüklenemedi.', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
+          { 
+            id: 'm1', 
+            text: 'Sohbet geçmişi yüklenemedi.', 
+            type: Role.SYSTEM, 
+            room: activeRoomId, 
+            senderId: 'system', 
+            senderName: 'Sistem',
+            senderAvatar: '',
+            isUser: false,
+            created: new Date().toISOString(), 
+            updated: '', 
+            collectionId: '', 
+            collectionName: '' 
+          }
        ]);
     });
 
     // Subscribe
     try {
-        unsubscribeFromRoom(); // Unsub previous
+        unsubscribeFromRoom();
         subscribeToRoom(activeRoomId, (newMessage) => {
           setActiveRoomMessages(prev => {
             if (prev.find(m => m.id === newMessage.id)) return prev;
-            
-            // Enrich with user data if missing
-            const sender = users.find(u => u.id === newMessage.user_id);
-            if (sender) {
-              newMessage.expand = { user_id: sender };
-            }
             return [...prev, newMessage];
           });
         });
     } catch(e) {
-        console.warn("Realtime subscription failed");
+        // console.warn("Realtime subscription failed");
     }
 
     return () => {
@@ -202,7 +212,6 @@ const App: React.FC = () => {
 
   const activeRoom = rooms.find(r => r.id === activeRoomId);
 
-  // Derive active participants based on room type
   const activeParticipants = React.useMemo(() => {
     if (!activeRoom) return [];
     if (activeRoom.type === 'private') {
@@ -216,7 +225,6 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    // Auth listener will reset to Guest
   };
 
   const handleLoginClick = () => {
@@ -254,8 +262,6 @@ const App: React.FC = () => {
         setUserListOpen(false);
       }
     } catch (err) {
-      console.error("Failed to start DM", err);
-      // Demo fallback
       const demoDmId = `dm_${targetUserId}`;
       const demoRoom: Room = { id: demoDmId, name: targetUser?.name || 'User', topic: 'DM', type: 'private', participants: [currentUser.id, targetUserId], active: true, created: '', updated: '', collectionId: '', collectionName: '' };
       setRooms(prev => [...prev, demoRoom]);
@@ -283,9 +289,7 @@ const App: React.FC = () => {
         await blockUser(currentUser.id, otherUserId);
         setBlockedUserIds(prev => new Set(prev).add(otherUserId));
       }
-    } catch (e) {
-      console.error("Block action failed", e);
-    }
+    } catch (e) {}
   };
 
   const isCurrentChatBlocked = React.useMemo(() => {
@@ -296,19 +300,12 @@ const App: React.FC = () => {
 
   // --- RENDER LOGIC ---
   
-  // Data Error State (Only if critical)
   if (dataError && rooms.length === 0) {
     return (
       <div className="flex flex-col h-screen items-center justify-center bg-gray-50 text-center p-4">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">Hata Oluştu</h2>
-        <p className="text-gray-500 mb-6">{dataError}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          Sayfayı Yenile
-        </button>
+        <button onClick={() => window.location.reload()} className="px-6 py-2 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors">Yenile</button>
       </div>
     );
   }
@@ -318,9 +315,7 @@ const App: React.FC = () => {
      return (
        <div className="flex flex-col h-screen items-center justify-center bg-gray-50 gap-4">
          <Loader2 className="w-10 h-10 animate-spin text-workigom-green"/>
-         <p className="text-gray-500 text-sm font-medium animate-pulse">
-           {dataLoading ? "Sohbet odaları yükleniyor..." : "Bağlantı kuruluyor..."}
-         </p>
+         <p className="text-gray-500 text-sm font-medium animate-pulse">Bağlantı kuruluyor...</p>
        </div>
      );
   }
@@ -329,10 +324,9 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50 text-slate-800 font-sans overflow-hidden">
       
-      {/* Auth Modal */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* Left Sidebar (Light Mode) */}
+      {/* Left Sidebar (Light) */}
       <aside className="hidden md:flex w-20 bg-white border-r border-gray-200 flex-col items-center py-6 gap-8 shrink-0 z-30">
         <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-lg shadow-gray-200 cursor-pointer hover:scale-105 transition-transform">
            <span className="font-bold text-xl">W</span>
@@ -347,26 +341,18 @@ const App: React.FC = () => {
 
         <div className="mb-4">
              {currentUser.id !== 'guest' ? (
-               <div 
-                 onClick={handleLogout}
-                 className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
-                 title="Çıkış Yap"
-               >
+               <div onClick={handleLogout} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer" title="Çıkış Yap">
                   <LogOut size={20} />
                </div>
              ) : (
-                <div 
-                 onClick={handleLoginClick}
-                 className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 transition-colors cursor-pointer"
-                 title="Giriş Yap"
-               >
+                <div onClick={handleLoginClick} className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 transition-colors cursor-pointer" title="Giriş Yap">
                   <LogIn size={20} />
                </div>
              )}
         </div>
       </aside>
 
-      {/* Room List Panel (Light Mode) */}
+      {/* Room List Panel (Light) */}
       <div className={`
         fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity xl:hidden
         ${roomMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
@@ -377,9 +363,7 @@ const App: React.FC = () => {
         ${roomMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-               WORKIGOM
-            </h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">WORKIGOM</h1>
             <button onClick={() => setRoomMenuOpen(false)} className="xl:hidden p-2 text-gray-400 hover:text-gray-900">
                <LogOut className="w-5 h-5 rotate-180"/>
             </button>
@@ -388,11 +372,7 @@ const App: React.FC = () => {
          <div className="p-3">
              <div className="relative">
                <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-               <input 
-                 type="text" 
-                 placeholder="Oda ara..." 
-                 className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-9 pr-4 text-sm text-gray-700 focus:ring-1 focus:ring-black focus:border-black transition-all placeholder-gray-400"
-               />
+               <input type="text" placeholder="Oda ara..." className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-9 pr-4 text-sm text-gray-700 focus:ring-1 focus:ring-black focus:border-black transition-all placeholder-gray-400"/>
              </div>
          </div>
 
@@ -401,19 +381,13 @@ const App: React.FC = () => {
                <Folder size={12} /> Odalar
             </div>
             {rooms.map(room => (
-              <RoomItem 
-                key={room.id}
-                room={room}
-                active={activeRoomId === room.id}
-                onClick={() => handleSwitchRoom(room.id)}
-              />
+              <RoomItem key={room.id} room={room} active={activeRoomId === room.id} onClick={() => handleSwitchRoom(room.id)} />
             ))}
          </div>
       </div>
 
-      {/* Main Chat Area (Light Mode) */}
+      {/* Main Chat Area (Light) */}
       <main className="flex-1 flex relative bg-gray-50 min-w-0 overflow-hidden">
-        
         <div className="flex-1 flex flex-col min-w-0 bg-gray-50">
           
           {/* Header */}
@@ -424,14 +398,8 @@ const App: React.FC = () => {
                 </button>
 
                 <div className="hidden md:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => setRoomMenuOpen(!roomMenuOpen)}>
-                   {activeRoom.type === 'private' ? (
-                     <Unlock className="w-4 h-4 text-green-600" />
-                   ) : (
-                     <Folder className="w-4 h-4 text-orange-500" />
-                   )}
-                   <span className="text-sm font-semibold text-gray-700">
-                     {activeRoom.type === 'private' ? 'Özel Mesaj' : 'Odalar'}
-                   </span>
+                   {activeRoom.type === 'private' ? <Unlock className="w-4 h-4 text-green-600" /> : <Folder className="w-4 h-4 text-orange-500" />}
+                   <span className="text-sm font-semibold text-gray-700">{activeRoom.type === 'private' ? 'Özel Mesaj' : 'Odalar'}</span>
                    <ChevronDown className="w-3 h-3 text-gray-500" />
                 </div>
 
@@ -440,42 +408,23 @@ const App: React.FC = () => {
                 <div className="flex flex-col min-w-0">
                    <h2 className="font-bold text-gray-900 text-base md:text-lg leading-tight flex items-center gap-2 truncate">
                       <span className="text-green-500">#</span> <span className="truncate">{activeRoom.name}</span>
-                      {activeRoom.type === 'private' && isCurrentChatBlocked && (
-                        <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full border border-red-200">Engellendi</span>
-                      )}
                    </h2>
                 </div>
              </div>
              
-             {/* Header Controls */}
              <div className="flex items-center gap-2 md:gap-3">
-                 
                  {activeRoom.type === 'private' && (
-                   <button
-                     onClick={toggleBlockUser}
-                     className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-                       ${isCurrentChatBlocked 
-                         ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' 
-                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                   >
+                   <button onClick={toggleBlockUser} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isCurrentChatBlocked ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-gray-100 text-gray-600'}`}>
                       <UserMinus size={16} />
                       {isCurrentChatBlocked ? "Engeli Kaldır" : "Engelle"}
                    </button>
                  )}
 
-                 <button
-                    onClick={() => setAllowDMs(!allowDMs)}
-                    className={`hidden md:flex p-2 rounded-full transition-colors relative
-                      ${allowDMs ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}`}
-                 >
+                 <button onClick={() => setAllowDMs(!allowDMs)} className={`hidden md:flex p-2 rounded-full transition-colors relative ${allowDMs ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}`}>
                     {allowDMs ? <Mail size={20} /> : <MailWarning size={20} />}
-                    <span className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${allowDMs ? 'bg-green-500' : 'bg-red-500'}`}></span>
                  </button>
 
-                 <button 
-                   onClick={() => setUserListOpen(!userListOpen)} 
-                   className={`lg:hidden p-2 rounded-lg transition-colors ${userListOpen ? 'bg-green-50 text-green-600' : 'text-gray-500 hover:bg-gray-100'}`}
-                 >
+                 <button onClick={() => setUserListOpen(!userListOpen)} className={`lg:hidden p-2 rounded-lg transition-colors ${userListOpen ? 'bg-green-50 text-green-600' : 'text-gray-500 hover:bg-gray-100'}`}>
                     <Users className="w-6 h-6" />
                  </button>
 
@@ -488,19 +437,11 @@ const App: React.FC = () => {
                  </div>
                  
                  {currentUser.id !== 'guest' ? (
-                   <button 
-                     onClick={handleLogout}
-                     className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full p-2 transition-colors hidden md:block"
-                     title="Çıkış Yap"
-                   >
+                   <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full p-2 transition-colors hidden md:block">
                       <LogOut className="w-5 h-5 rotate-180" />
                    </button>
                  ) : (
-                    <button 
-                     onClick={handleLoginClick}
-                     className="text-green-600 hover:text-green-500 hover:bg-green-50 rounded-full p-2 transition-colors hidden md:block"
-                     title="Giriş Yap"
-                   >
+                    <button onClick={handleLoginClick} className="text-green-600 hover:text-green-500 hover:bg-green-50 rounded-full p-2 transition-colors hidden md:block">
                       <LogIn className="w-5 h-5" />
                    </button>
                  )}
@@ -511,39 +452,23 @@ const App: React.FC = () => {
               {isCurrentChatBlocked ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
                   <UserMinus size={48} className="text-gray-300"/>
-                  <p>Bu kullanıcıyı engellediniz. Mesaj gönderemez veya alamazsınız.</p>
+                  <p>Bu kullanıcıyı engellediniz.</p>
                   <button onClick={toggleBlockUser} className="text-black font-semibold hover:underline">Engeli Kaldır</button>
                 </div>
               ) : (
-                <ChatModule 
-                  key={activeRoomId}
-                  roomName={activeRoom.name} 
-                  messages={activeRoomMessages}
-                  currentUser={currentUser}
-                  activeRoomId={activeRoomId}
-                />
+                <ChatModule key={activeRoomId} roomName={activeRoom.name} messages={activeRoomMessages} currentUser={currentUser} activeRoomId={activeRoomId}/>
               )}
           </div>
         </div>
 
-        {/* Right Sidebar (Light Mode) */}
-        <div className={`
-           fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity
-           ${userListOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-        `} onClick={() => setUserListOpen(false)}></div>
+        {/* Right Sidebar (Light) */}
+        <div className={`fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity ${userListOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setUserListOpen(false)}></div>
 
-        <aside className={`
-            fixed inset-y-0 right-0 z-40 bg-white border-l border-gray-200 flex-col shrink-0 transition-transform duration-300
-            w-60 lg:w-80 lg:relative lg:translate-x-0 lg:flex
-            ${userListOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:shadow-none'}
-        `}>
-            
+        <aside className={`fixed inset-y-0 right-0 z-40 bg-white border-l border-gray-200 flex-col shrink-0 transition-transform duration-300 w-60 lg:w-80 lg:relative lg:translate-x-0 lg:flex ${userListOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:shadow-none'}`}>
             <div className="p-4 lg:p-6 h-full overflow-y-auto">
                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-[10px] lg:text-xs font-bold text-gray-400 uppercase tracking-wider">ÜYELER ({activeParticipants.length})</h3>
-                  <button onClick={() => setUserListOpen(false)} className="lg:hidden text-gray-500 hover:text-black">
-                    <X size={18} />
-                  </button>
+                  <button onClick={() => setUserListOpen(false)} className="lg:hidden text-gray-500 hover:text-black"><X size={18} /></button>
                </div>
                
                <div className="space-y-3 lg:space-y-4">
@@ -561,11 +486,7 @@ const App: React.FC = () => {
                   </div>
 
                   {activeParticipants.filter(u => u.id !== currentUser.id).map(user => (
-                     <UserListRow 
-                        key={user.id} 
-                        user={user} 
-                        onDoubleClick={() => handleUserDoubleClick(user.id)}
-                     />
+                     <UserListRow key={user.id} user={user} onDoubleClick={() => handleUserDoubleClick(user.id)} />
                   ))}
                </div>
             </div>
@@ -577,67 +498,27 @@ const App: React.FC = () => {
 
 // --- Helper Components ---
 
-interface SidebarIconProps {
-  icon: React.ReactNode;
-  active: boolean;
-  label: string;
-}
-
-const SidebarIcon: React.FC<SidebarIconProps> = ({ icon, active, label }) => (
-  <button 
-    title={label}
-    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 group relative
-      ${active ? 'bg-black text-white shadow-lg shadow-gray-300' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}
-  >
+const SidebarIcon: React.FC<{ icon: React.ReactNode; active: boolean; label: string }> = ({ icon, active, label }) => (
+  <button title={label} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 group relative ${active ? 'bg-black text-white shadow-lg shadow-gray-300' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}>
     {icon}
-    <span className="absolute left-12 bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-md">
-      {label}
-    </span>
+    <span className="absolute left-12 bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-md">{label}</span>
   </button>
 );
 
-interface RoomItemProps {
-  room: Room;
-  active: boolean;
-  onClick: () => void;
-}
-
-const RoomItem: React.FC<RoomItemProps> = ({ room, active, onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-3 mb-1 border-l-2
-      ${active 
-        ? 'bg-gray-100 border-l-black text-black' 
-        : 'border-l-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}
-  >
-     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 
-        ${active ? 'bg-white text-black shadow-sm' : 'bg-gray-50 text-gray-400'}`}>
+const RoomItem: React.FC<{ room: Room; active: boolean; onClick: () => void }> = ({ room, active, onClick }) => (
+  <div onClick={onClick} className={`px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-3 mb-1 border-l-2 ${active ? 'bg-gray-100 border-l-black text-black' : 'border-l-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}>
+     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-white text-black shadow-sm' : 'bg-gray-50 text-gray-400'}`}>
         {room.type === 'private' ? <Lock size={14} /> : <Hash size={16} />}
      </div>
-     <div className="flex-1 min-w-0">
-        <h4 className={`text-sm font-medium truncate ${active ? 'font-bold' : ''}`}>{room.name}</h4>
-     </div>
+     <div className="flex-1 min-w-0"><h4 className={`text-sm font-medium truncate ${active ? 'font-bold' : ''}`}>{room.name}</h4></div>
   </div>
 );
 
-interface UserListRowProps {
-  user: User;
-  onDoubleClick: () => void;
-}
-
-const UserListRow: React.FC<UserListRowProps> = ({ user, onDoubleClick }) => (
-  <div 
-    onDoubleClick={onDoubleClick}
-    title="Özel mesaj için çift tıkla"
-    className="flex items-center gap-2 lg:gap-3 p-1.5 lg:p-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group select-none"
-  >
+const UserListRow: React.FC<{ user: User; onDoubleClick: () => void }> = ({ user, onDoubleClick }) => (
+  <div onDoubleClick={onDoubleClick} title="Özel mesaj için çift tıkla" className="flex items-center gap-2 lg:gap-3 p-1.5 lg:p-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group select-none">
     <div className="relative shrink-0">
       <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm overflow-hidden bg-white border border-gray-200`}>
-         {user.isBot ? (
-            <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent`} alt="Bot" className="w-full h-full" />
-         ) : (
-             <img src={user.avatar ? `${pb.baseUrl}/api/files/users/${user.id}/${user.avatar}` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-full h-full object-cover" />
-         )}
+         {user.isBot ? <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent`} alt="Bot" className="w-full h-full" /> : <img src={user.avatar ? `${pb.baseUrl}/api/files/users/${user.id}/${user.avatar}` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-full h-full object-cover" />}
       </div>
     </div>
     <div className="flex-1 min-w-0">

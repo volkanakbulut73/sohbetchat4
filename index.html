@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
-    <!-- Mobil Web App Ayarları -->
+    <!-- Mobil Web App Ayarları (Light Mode) -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#ffffff">
 
-    <!-- Favicon (404 Hatasını Engellemek İçin) -->
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
 
     <title>Workigom Chat | Güvenli Sohbet Platformu</title>
@@ -31,7 +31,7 @@
             },
             colors: {
               workigom: {
-                dark: '#f8fafc', // Now Light Gray
+                dark: '#f8fafc', // Light Gray (Slate 50)
                 green: '#10b981', // Emerald 500
                 greenMuted: 'rgba(16, 185, 129, 0.1)',
                 border: '#e2e8f0' // Slate 200
@@ -52,12 +52,12 @@
       body {
         background-color: #f8fafc;
         color: #1e293b;
-        overflow-y: hidden; /* App handles scrolling */
+        overflow-y: hidden;
         position: relative;
         overscroll-behavior-y: none;
       }
 
-      /* Custom Scrollbar */
+      /* Custom Scrollbar for Light Mode */
       ::-webkit-scrollbar {
         width: 6px;
       }
@@ -94,11 +94,11 @@
 }
 </script>
 </head>
-  <body class="bg-workigom-dark text-slate-800 antialiased font-sans">
+  <body class="bg-gray-50 text-slate-800 antialiased font-sans">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Polyfill for process.env to prevent ReferenceError
+      // Polyfill for process.env
       window.process = { env: { NODE_ENV: 'production', API_KEY: '' } };
     </script>
   </body>

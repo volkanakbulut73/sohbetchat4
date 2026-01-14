@@ -13,7 +13,7 @@ interface ChatModuleProps {
 }
 
 const COLORS = [
-  '#0f172a', // Slate 900 (Dark for light mode)
+  '#0f172a', // Slate 900
   '#dc2626', // Red
   '#d97706', // Amber
   '#059669', // Emerald
@@ -64,7 +64,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [selectedColor, setSelectedColor] = useState('#0f172a'); // Default dark text
+  const [selectedColor, setSelectedColor] = useState('#0f172a');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +78,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
   }, [messages, isLoading]);
 
   useEffect(() => {
-    // Focus input on mount
     inputRef.current?.focus();
   }, []);
 
@@ -97,19 +96,28 @@ const ChatModule: React.FC<ChatModuleProps> = ({
     
     try {
       // 1. Send User Message to DB
-      await sendMessageToPB(activeRoomId, content, Role.USER, currentUser.id, color);
+      // We pass user info for denormalization
+      await sendMessageToPB(
+        activeRoomId, 
+        content, 
+        Role.USER, 
+        currentUser.id, 
+        { name: currentUser.name || currentUser.username, avatar: currentUser.avatar }
+      );
       
       // 2. Trigger AI Response (Frontend logic for demo)
       setIsLoading(true);
 
-      // Create a temporary history array including the new message for the AI context
       const tempHistory: Message[] = [
         ...messages,
         { 
-          role: Role.USER, 
-          content, 
-          room_id: activeRoomId, 
-          user_id: currentUser.id, 
+          text: content,
+          type: Role.USER, 
+          room: activeRoomId, 
+          senderId: currentUser.id, 
+          senderName: currentUser.name || currentUser.username,
+          senderAvatar: currentUser.avatar,
+          isUser: true,
           id: 'temp', 
           created: '', 
           updated: '', 
@@ -120,12 +128,18 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
       try {
         const responseContent = await sendMessageToAI(tempHistory);
-        await sendMessageToPB(activeRoomId, responseContent, Role.ASSISTANT, currentUser.id);
+        await sendMessageToPB(
+            activeRoomId, 
+            responseContent, 
+            Role.ASSISTANT, 
+            currentUser.id,
+            { name: 'Grok', avatar: '' } // AI Info
+        );
 
       } catch (aiError) {
         console.error("AI Error", aiError);
         const errorMessage = aiError instanceof Error ? aiError.message : "Bağlantı hatası.";
-        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id);
+        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id, { name: 'Grok', avatar: '' });
       }
 
     } catch (error) {
@@ -140,8 +154,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
     inputRef.current?.focus();
   };
 
-  // Filter system messages for display
-  const displayMessages = messages.filter((m) => m.role !== Role.SYSTEM);
+  const displayMessages = messages.filter((m) => m.type !== Role.SYSTEM);
 
   return (
     <div className="flex flex-col w-full h-full bg-gray-50 relative overflow-hidden font-sans">
@@ -149,17 +162,18 @@ const ChatModule: React.FC<ChatModuleProps> = ({
       {/* --- Chat Stream --- */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar scroll-smooth">
         {displayMessages.map((msg, idx) => {
-          const isUser = msg.role === Role.USER;
-          const isAssistant = msg.role === Role.ASSISTANT;
+          // Identify based on 'type' or 'isUser'
+          const isUser = msg.type === Role.USER || msg.isUser === true;
+          const isAssistant = msg.type === Role.ASSISTANT || msg.type === 'assistant';
           
-          // Helper to get sender info
-          const senderName = isAssistant ? "Grok" : (msg.expand?.user_id?.name || msg.expand?.user_id?.username || "Kullanıcı");
-          const senderAvatar = msg.expand?.user_id?.avatar 
-            ? `${pb.baseUrl}/api/files/users/${msg.expand?.user_id?.id}/${msg.expand?.user_id?.avatar}`
+          // Use denormalized fields
+          const senderName = msg.senderName || (isAssistant ? "Grok" : "Kullanıcı");
+          // Construct avatar URL if filename exists
+          const senderAvatar = msg.senderAvatar 
+            ? `${pb.baseUrl}/api/files/users/${msg.senderId}/${msg.senderAvatar}`
             : null;
           
-          // Identify if message is from "Me"
-          const isMe = msg.user_id === currentUser.id && !isAssistant;
+          const isMe = msg.senderId === currentUser.id && !isAssistant;
 
           return (
             <div
@@ -181,7 +195,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1 min-w-0">
-                  {/* Sender Name (only for others) */}
+                  {/* Sender Name */}
                   {!isMe && (
                     <span className="text-xs text-gray-500 font-medium ml-1 flex items-center gap-1">
                        {senderName}
@@ -199,7 +213,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                     }`}
                   >
                     <div className="whitespace-pre-wrap break-words" style={{ color: msg.color || 'inherit' }}>
-                      {msg.content}
+                      {msg.text}
                     </div>
                   </div>
                   
@@ -256,7 +270,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {/* Emoji Picker Popup */}
         {showEmojiPicker && (
           <div className="absolute bottom-20 right-4 sm:right-8 w-80 max-w-[calc(100vw-2rem)] h-96 bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col animate-enter z-20 overflow-hidden">
-             {/* Header */}
              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <span className="text-sm font-bold text-gray-700">Emoji Seç</span>
                 <button onClick={() => setShowEmojiPicker(false)} className="text-gray-400 hover:text-black">
@@ -264,7 +277,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 </button>
              </div>
              
-             {/* Content */}
              <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
                 {EMOJI_CATEGORIES.map((category) => (
                    <div key={category.name} className="mb-4">
@@ -292,7 +304,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
           onSubmit={handleSendMessage}
           className="relative flex items-center gap-2 bg-white border border-gray-200 rounded-full p-2 pl-4 focus-within:bg-white focus-within:border-black focus-within:shadow-md transition-all shadow-sm"
         >
-          {/* Color Picker Toggle */}
           <button 
             type="button" 
             onClick={() => { setShowColorPicker(!showColorPicker); setShowEmojiPicker(false); }}
