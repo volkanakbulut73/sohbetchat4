@@ -9,15 +9,13 @@ import { Message, Role } from '../types';
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
     // 1. Safe API Key Retrieval for Browser Environment
-    // We explicitly check if process is defined to avoid ReferenceErrors in some bundlers.
     const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
 
-    // 2. Mock/Simulation Mode if Key is Missing
-    // This prevents the "An API Key must be set" error from crashing the UI.
+    // 2. Check if Key is Missing
     if (!apiKey) {
-      console.warn("Grok/Gemini API Key missing. Returning simulation response.");
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Fake latency
-      return "Sistem: API Anahtarı bulunamadı (process.env.API_KEY). Simülasyon modundayım. Grok API bağlantısı için anahtarı yapılandırın.";
+      console.warn("Gemini API Key missing.");
+      // Return a standard system message
+      return "Sistem: API Anahtarı yapılandırılmamış. Lütfen 'process.env.API_KEY' değerinin doğru ayarlandığından emin olun.";
     }
 
     // 3. Initialize SDK
@@ -54,6 +52,6 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
         return "Bağlantı Hatası: API Anahtarı geçersiz veya yetkisiz erişim.";
     }
 
-    return "Hata: Grok modülü şu an yanıt veremiyor. Lütfen bağlantınızı kontrol edin.";
+    return "Üzgünüm, şu an bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.";
   }
 };
