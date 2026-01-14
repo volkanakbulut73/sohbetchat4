@@ -5,15 +5,16 @@ import { loginWithEmail } from '../services/pocketbase';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isStandalone?: boolean; // New prop for standalone page mode
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, isStandalone = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  if (!isOpen) return null;
+  if (!isOpen && !isStandalone) return null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,27 +23,36 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       await loginWithEmail(email, password);
       // Auth success is handled by the listener in App.tsx
-      // But we can close modal here optionally, though App might re-render whole view
     } catch (err: any) {
       setAuthError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
       setAuthLoading(false);
     }
   };
 
+  const containerClasses = isStandalone 
+    ? "relative w-full max-w-sm z-10" // Simple container for standalone
+    : "fixed inset-0 z-50 flex items-center justify-center p-4"; // Modal container
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      ></div>
-      
-      <div className="relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm animate-enter z-50">
-        <button 
+    <div className={containerClasses}>
+      {/* Backdrop (Only for Modal Mode) */}
+      {!isStandalone && (
+        <div 
+          className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X size={24} />
-        </button>
+        ></div>
+      )}
+      
+      <div className={`relative bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm animate-enter z-50 ${isStandalone ? 'mx-auto' : ''}`}>
+        {/* Close Button (Only for Modal Mode) */}
+        {!isStandalone && (
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={24} />
+          </button>
+        )}
 
         <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
           <span className="text-white font-bold text-3xl">W</span>
@@ -58,7 +68,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               placeholder="Email veya Kullanıcı Adı" 
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all text-gray-900"
               required
             />
           </div>
@@ -68,7 +78,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               placeholder="Şifre" 
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all text-gray-900"
               required
             />
           </div>
