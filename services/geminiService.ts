@@ -2,76 +2,51 @@ import { GoogleGenAI } from "@google/genai";
 import { DEFAULT_MODEL } from '../constants';
 import { Message, Role } from '../types';
 
-// Safely retrieve API Key
-const getApiKey = () => (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
-
-// Lazy initialization to prevent top-level crash
-let aiInstance: GoogleGenAI | null = null;
-
-const getAI = () => {
-  if (!aiInstance) {
-    const key = getApiKey();
-    if (!key) {
-      // Throwing here allows the caller to catch it and display a UI error instead of crashing the app
-      throw new Error("API Key is missing. Please check your configuration.");
-    }
-    aiInstance = new GoogleGenAI({ apiKey: key });
-  }
-  return aiInstance;
-};
-
 /**
  * Sends the chat history to the Gemini API and retrieves the response.
+ * Uses the @google/genai SDK with the recommended stateless generateContent approach.
  */
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
-    // Check key before attempting initialization to handle gracefully in UI
-    const key = getApiKey();
-    if (!key) {
-        return "Sistem Mesajı: API Anahtarı eksik. Yapay zeka şu an yanıt veremiyor. (Lütfen yönetici ile iletişime geçin)";
-    }
+    // Initialize the GoogleGenAI client with the API key from the environment.
+    // We access process.env.API_KEY directly so that build tools/bundlers can correctly substitute it.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Initialize client on demand
-    const ai = getAI();
-
-    // 1. Prepare contents
+    // 1. Prepare Content: Convert the app's message history to Gemini's 'Content' format.
+    // Gemini expects parts to be an array of objects with a 'text' property.
+    // We filter out system messages from the 'contents' array as they are handled in 'config'.
     const contents = history
-      .filter(msg => msg.type !== Role.SYSTEM) // Filter out system messages from history if passed directly
+      .filter(msg => msg.type !== Role.SYSTEM && msg.text && msg.text.trim() !== "")
       .map(msg => ({
-        role: msg.type === Role.ASSISTANT ? 'model' : 'user', // Map our type to GenAI role
-        parts: [{ text: msg.text }],
+        role: msg.type === Role.ASSISTANT ? 'model' : 'user',
+        parts: [{ text: msg.text }]
       }));
 
-    // 2. Prepare config (system instruction)
+    // 2. Extract System Instruction: Find the system message to set the persona.
     const systemMessage = history.find(msg => msg.type === Role.SYSTEM);
-    const config: any = {};
-    if (systemMessage) {
-        config.systemInstruction = systemMessage.text;
-    }
+    const systemInstruction = systemMessage ? systemMessage.text : undefined;
 
-    // 3. Make API call
-    // Using generateContent with the model name from constants
+    // 3. Generate Content
     const response = await ai.models.generateContent({
       model: DEFAULT_MODEL,
       contents: contents,
-      config: config
+      config: {
+        systemInstruction: systemInstruction,
+      }
     });
 
-    // 4. Validate and return
-    // Accessing .text property directly as per SDK guidelines
-    if (response.text) {
-      return response.text;
-    } else {
-      console.warn("Empty response from AI model");
-      return "Hmm, bir şeyler ters gitti. (Boş cevap)";
-    }
+    // 4. Return the generated text.
+    // The .text property is a getter that safely extracts the string from the response candidate.
+    return response.text || "";
 
-  } catch (error) {
-    console.error('Gemini AI Service Error:', error);
-    // Return a user-friendly error message if it's an API key issue
-    if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("400"))) {
-       return "Bağlantı hatası: API Anahtarı eksik veya geçersiz.";
+  } catch (error: any) {
+    console.error('Gemini Service Error:', error);
+    
+    // Provide a more descriptive error if possible, but keep the UI clean.
+    if (error.toString().includes("API key")) {
+      return "Sistem Mesajı: API Anahtarı yapılandırmasında bir sorun var. (403/400)";
     }
-    return "Bir hata oluştu, şu an yanıt veremiyorum.";
+    
+    return "Üzgünüm, şu an bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.";
   }
 };
