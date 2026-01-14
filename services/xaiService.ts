@@ -3,16 +3,31 @@ import { DEFAULT_MODEL } from '../constants';
 import { Message, Role } from '../types';
 
 // Safely retrieve API Key
-// In browser environments without a bundler, process might be undefined unless polyfilled.
-const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+const getApiKey = () => (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
 
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// Lazy initialization to prevent top-level crash
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    const key = getApiKey();
+    if (!key) {
+      // Throwing here allows the caller to catch it and display a UI error instead of crashing the app
+      throw new Error("API Key is missing. Please check your configuration.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey: key });
+  }
+  return aiInstance;
+};
 
 /**
  * Sends the chat history to the Gemini API and retrieves the response.
  */
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
+    // Initialize client on demand
+    const ai = getAI();
+
     // 1. Prepare contents
     const contents = history
       .filter(msg => msg.role !== Role.SYSTEM)
@@ -44,8 +59,11 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
     }
 
   } catch (error) {
-    // Log the error but re-throw a sanitized version or handle it gracefully
     console.error('AI Service Error:', error);
-    throw new Error('Service communication failed');
+    // Return a user-friendly error message if it's an API key issue
+    if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("400"))) {
+       return "Bağlantı hatası: API Anahtarı eksik veya geçersiz. Lütfen yapılandırmayı kontrol edin.";
+    }
+    throw error;
   }
 };

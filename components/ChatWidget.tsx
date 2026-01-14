@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X } from 'lucide-react';
+import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X, Terminal } from 'lucide-react';
 import { Message, Role, User } from '../types';
 import { sendMessageToAI } from '../services/xaiService';
 import { sendMessageToPB, pb } from '../services/pocketbase';
@@ -124,12 +124,12 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
       } catch (aiError) {
         console.error("AI Error", aiError);
-        await sendMessageToPB(activeRoomId, "Bağlantı hatası: Yapay zeka yanıt veremedi.", Role.ASSISTANT, currentUser.id);
+        const errorMessage = aiError instanceof Error ? aiError.message : "Bağlantı hatası.";
+        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id);
       }
 
     } catch (error) {
       console.error("Message send failed", error);
-      alert("Mesaj gönderilemedi.");
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +153,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
           const isAssistant = msg.role === Role.ASSISTANT;
           
           // Helper to get sender info
-          const senderName = isAssistant ? "Workigom AI" : (msg.expand?.user_id?.name || msg.expand?.user_id?.username || "Kullanıcı");
+          const senderName = isAssistant ? "Grok" : (msg.expand?.user_id?.name || msg.expand?.user_id?.username || "Kullanıcı");
           const senderAvatar = msg.expand?.user_id?.avatar 
             ? `${pb.baseUrl}/api/files/users/${msg.expand?.user_id?.id}/${msg.expand?.user_id?.avatar}`
             : null;
@@ -169,10 +169,12 @@ const ChatModule: React.FC<ChatModuleProps> = ({
               <div className={`flex max-w-[85%] md:max-w-[70%] gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                 
                 {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden
-                  ${isMe ? 'bg-gray-800 border border-gray-700' : 'bg-black border border-gray-800'}`}>
+                <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden border
+                  ${isMe ? 'bg-gray-800 border-gray-700' : isAssistant ? 'bg-white text-black border-white' : 'bg-black border-gray-800'}`}>
                   {isAssistant ? (
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent" alt="Bot" className="w-full h-full" />
+                    <div className="flex items-center justify-center w-full h-full bg-white text-black">
+                      <Terminal size={20} fill="black" />
+                    </div>
                   ) : (
                     <img src={senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`} alt={senderName} className="w-full h-full object-cover" />
                   )}
@@ -181,16 +183,19 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 <div className="flex flex-col gap-1 min-w-0">
                   {/* Sender Name (only for others) */}
                   {!isMe && (
-                    <span className="text-xs text-gray-400 font-medium ml-1">
+                    <span className="text-xs text-gray-400 font-medium ml-1 flex items-center gap-1">
                        {senderName}
+                       {isAssistant && <span className="bg-gray-200 text-black text-[9px] px-1 rounded font-bold tracking-wider">AI</span>}
                     </span>
                   )}
 
                   {/* Bubble */}
-                  <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed shadow-lg transition-all
+                  <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed shadow-lg transition-all group
                     ${isMe 
                       ? 'bg-workigom-green text-black rounded-2xl rounded-tr-none font-medium' 
-                      : 'bg-[#1a1a1e] text-gray-200 rounded-2xl rounded-tl-none border border-gray-800'
+                      : isAssistant 
+                        ? 'bg-gray-100 text-gray-900 rounded-2xl rounded-tl-none font-medium'
+                        : 'bg-[#1a1a1e] text-gray-200 rounded-2xl rounded-tl-none border border-gray-800'
                     }`}
                   >
                     <div className="whitespace-pre-wrap break-words" style={{ color: msg.color || 'inherit' }}>
@@ -212,15 +217,15 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {isLoading && (
           <div className="flex justify-start w-full animate-enter">
             <div className="flex gap-3 max-w-[70%]">
-               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-black border border-gray-800 overflow-hidden`}>
-                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent" alt="Bot" className="w-full h-full" />
+               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-white border border-white overflow-hidden`}>
+                 <Terminal size={20} fill="black" className="text-black" />
               </div>
               <div className="flex flex-col gap-1">
-                 <span className="text-xs text-gray-500 font-medium ml-1">Workigom AI</span>
-                 <div className="bg-[#1a1a1e] px-5 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2 w-fit border border-gray-800">
-                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 bg-workigom-green rounded-full animate-bounce"></span>
+                 <span className="text-xs text-gray-500 font-medium ml-1">Grok</span>
+                 <div className="bg-gray-100 px-5 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2 w-fit">
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce"></span>
                  </div>
               </div>
             </div>
