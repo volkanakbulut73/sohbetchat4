@@ -25,6 +25,12 @@ const getAI = () => {
  */
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
+    // Check key before attempting initialization to handle gracefully in UI
+    const key = getApiKey();
+    if (!key) {
+        return "Sistem Mesajı: API Anahtarı eksik. Yapay zeka şu an yanıt veremiyor. (Lütfen yönetici ile iletişime geçin)";
+    }
+
     // Initialize client on demand
     const ai = getAI();
 
@@ -62,8 +68,8 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
     console.error('AI Service Error:', error);
     // Return a user-friendly error message if it's an API key issue
     if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("400"))) {
-       return "Bağlantı hatası: API Anahtarı eksik veya geçersiz. Lütfen yapılandırmayı kontrol edin.";
+       return "Bağlantı hatası: API Anahtarı eksik veya geçersiz.";
     }
-    throw error;
+    return "Bir hata oluştu, şu an yanıt veremiyorum.";
   }
 };

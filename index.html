@@ -7,8 +7,8 @@
     <!-- Mobil Web App Ayarları -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0a0a0c">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#ffffff">
 
     <!-- Favicon (404 Hatasını Engellemek İçin) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
@@ -31,10 +31,10 @@
             },
             colors: {
               workigom: {
-                dark: '#0a0a0c',
-                green: '#00ff9d',
-                greenMuted: 'rgba(0, 255, 157, 0.1)',
-                border: '#1a1a1e'
+                dark: '#f8fafc', // Now Light Gray
+                green: '#10b981', // Emerald 500
+                greenMuted: 'rgba(16, 185, 129, 0.1)',
+                border: '#e2e8f0' // Slate 200
               }
             }
           }
@@ -50,8 +50,8 @@
       }
 
       body {
-        background-color: #0a0a0c;
-        color: #f1f5f9;
+        background-color: #f8fafc;
+        color: #1e293b;
         overflow-y: hidden; /* App handles scrolling */
         position: relative;
         overscroll-behavior-y: none;
@@ -62,11 +62,14 @@
         width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #0a0a0c;
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #333;
+        background: #cbd5e1;
         border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
       }
 
       .animate-enter {
@@ -91,7 +94,7 @@
 }
 </script>
 </head>
-  <body class="bg-workigom-dark text-slate-100 antialiased font-sans">
+  <body class="bg-workigom-dark text-slate-800 antialiased font-sans">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
