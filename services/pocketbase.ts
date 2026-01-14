@@ -35,7 +35,8 @@ export const getUsers = async (): Promise<User[]> => {
     });
     return records as unknown as User[];
   } catch (e) {
-    console.error("Error fetching users:", e);
+    // Suppress common fetch errors to avoid console noise
+    // console.error("Error fetching users:", e);
     return [];
   }
 };
@@ -49,8 +50,11 @@ export const getPublicRooms = async (): Promise<Room[]> => {
       sort: 'created',
     });
     return records as unknown as Room[];
-  } catch (e) {
-    console.error("Error fetching rooms", e);
+  } catch (e: any) {
+    // Only log critical errors, ignore 404/Not Found for demo purposes
+    if (e.status !== 404 && e.status !== 0) {
+        console.error("Error fetching rooms", e);
+    }
     return [];
   }
 };
@@ -66,7 +70,7 @@ export const getPrivateRoom = async (currentUserId: string, targetUserId: string
       }
       return null;
   } catch (e) {
-      console.error("Error getting private room", e);
+      // console.error("Error getting private room", e);
       return null;
   }
 };
@@ -94,8 +98,11 @@ export const getMessages = async (roomId: string): Promise<Message[]> => {
         expand: 'user_id',
       });
       return records.items as unknown as Message[];
-  } catch (e) {
-      console.error("Error fetching messages", e);
+  } catch (e: any) {
+      // Suppress 404/Error logs for demo/missing backend
+      if (e.status !== 404 && e.status !== 0) {
+         console.error("Error fetching messages", e);
+      }
       return [];
   }
 };
@@ -107,6 +114,23 @@ export const sendMessageToPB = async (
   userId: string,
   color?: string
 ): Promise<Message> => {
+  
+  // If in demo mode, pretend we sent it
+  if (roomId.startsWith('demo_')) {
+      return {
+          id: 'demo_' + Math.random().toString(36).substr(2, 9),
+          content,
+          role,
+          room_id: roomId,
+          user_id: userId,
+          color,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
+          collectionId: 'demo',
+          collectionName: 'messages'
+      } as Message;
+  }
+
   const data = {
     content,
     role,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ChatModule from './components/ChatWidget';
-import AuthModal from './components/AuthModal'; // LandingPage import removed
-import { LayoutGrid, MessageSquare, Users, Settings, LogOut, Search, Menu, Hash, Folder, ChevronDown, X, Lock, Unlock, Mail, MailWarning, UserMinus, Loader2, AlertCircle } from 'lucide-react';
+import AuthModal from './components/AuthModal';
+import { LayoutGrid, MessageSquare, Users, Settings, LogOut, Search, Menu, Hash, Folder, ChevronDown, X, Lock, Unlock, Mail, MailWarning, UserMinus, Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { Room, User, Message, Role } from './types';
 import { 
   pb, 
@@ -19,10 +19,22 @@ import {
   unblockUser
 } from './services/pocketbase';
 
+const GUEST_USER: User = { 
+  id: 'guest', 
+  username: 'misafir', 
+  name: 'Misafir Kullanıcı', 
+  email: 'guest@workigom.com', 
+  created: new Date().toISOString(), 
+  updated: new Date().toISOString(), 
+  collectionId: '', 
+  collectionName: '',
+  isBot: false
+};
+
 const App: React.FC = () => {
-  // Auth State
-  const [currentUser, setCurrentUser] = useState<any>(getCurrentUser());
-  // showAuthModal removed as it is now default view for guests
+  // Auth State - Default to Guest if no user
+  const [currentUser, setCurrentUser] = useState<any>(getCurrentUser() || GUEST_USER);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // App Data State
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -43,24 +55,26 @@ const App: React.FC = () => {
 
   // 1. Initial Load & Auth Check
   useEffect(() => {
-    // Check if logged in
-    if (pb.authStore.isValid) {
-      setCurrentUser(pb.authStore.model);
-      loadAppData();
-    }
+    // If we have a real user, load data. If guest, we might load demo data or public data.
+    // We always try to load data now.
+    loadAppData();
 
     // Listen to auth changes
     const removeListener = pb.authStore.onChange((token, model) => {
-      setCurrentUser(model);
+      // If logout (model is null), switch to Guest
+      setCurrentUser(model || GUEST_USER);
+      
       if (model) {
+        setShowAuthModal(false); // Close modal on success
         loadAppData();
       } else {
-        // Reset state on logout
+        // Reset state on logout but keep Guest active
         setRooms([]);
         setUsers([]);
         setActiveRoomMessages([]);
         setActiveRoomId('');
         setDataError(null);
+        loadAppData(); // Reload data for guest (e.g. public rooms)
       }
     });
 
@@ -79,19 +93,19 @@ const App: React.FC = () => {
         const usersData = await getUsers();
         setUsers(usersData);
       } catch (e) {
-        console.warn("Failed to fetch users, using demo user list");
+        // console.warn("Failed to fetch users, using demo user list");
         setUsers([
            { id: 'u1', username: 'demo_user', name: 'Demo User', email: 'demo@test.com', created: '', updated: '', collectionId: '', collectionName: '' }
         ]);
       }
 
-      // Fetch Blocked Users
+      // Fetch Blocked Users (Only if real user)
       if (pb.authStore.model) {
         try {
           const blocks = await getBlockedUsers(pb.authStore.model.id);
           setBlockedUserIds(new Set(blocks));
         } catch (e) {
-          console.warn("Blocks fetch failed");
+          // Silent fail for blocks
         }
       }
 
@@ -102,11 +116,12 @@ const App: React.FC = () => {
           setRooms(roomsData);
           handleSwitchRoom(roomsData[0].id, roomsData);
         } else {
-           // Fallback if empty array returned
+           // If request succeeded but empty, verify if that's expected or fallback to demo
+           // For now, treat empty as "no rooms created yet", fallback to demo for better UX
            throw new Error("No rooms found");
         }
       } catch (e) {
-         console.warn("Backend 404/Error on rooms, falling back to Demo Mode.");
+         // Console warning suppressed to avoid noise
          const demoRooms: Room[] = [
              { id: 'demo_genel', name: 'Genel Sohbet', topic: 'Herkesin buluşma noktası', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
              { id: 'demo_yazilim', name: 'Yazılım', topic: 'Kodlama ve teknoloji', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' }
@@ -117,7 +132,6 @@ const App: React.FC = () => {
 
     } catch (err: any) {
       console.error("Critical failure in loading app data", err);
-      setDataError("Uygulama verileri yüklenemedi. (Backend bağlantı hatası)");
     } finally {
       setDataLoading(false);
     }
@@ -127,13 +141,21 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!activeRoomId) return;
 
+    // Skip backend logic for demo rooms
+    if (activeRoomId.startsWith('demo_')) {
+      setActiveRoomMessages([
+          { id: 'm1', content: 'Workigom Chat sistemine hoş geldiniz! (Demo Modu)', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
+      ]);
+      return;
+    }
+
     // Load history first
     getMessages(activeRoomId).then(msgs => {
       setActiveRoomMessages(msgs);
     }).catch(() => {
-       // Demo messages
+       // Demo messages fallback
        setActiveRoomMessages([
-          { id: 'm1', content: 'Workigom Chat sistemine hoş geldiniz! (Demo Modu)', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
+          { id: 'm1', content: 'Sohbet geçmişi yüklenemedi.', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
        ]);
     });
 
@@ -153,7 +175,7 @@ const App: React.FC = () => {
           });
         });
     } catch(e) {
-        console.warn("Realtime subscription failed (expected in demo mode)");
+        console.warn("Realtime subscription failed");
     }
 
     return () => {
@@ -186,9 +208,19 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+    // Auth listener will reset to Guest
+  };
+
+  const handleLoginClick = () => {
+    setShowAuthModal(true);
   };
 
   const handleUserDoubleClick = async (targetUserId: string) => {
+    if (currentUser.id === 'guest') {
+      alert("Özel mesaj göndermek için giriş yapmalısınız.");
+      return;
+    }
+    
     if (!currentUser || targetUserId === currentUser.id) return;
     
     const targetUser = users.find(u => u.id === targetUserId);
@@ -224,6 +256,8 @@ const App: React.FC = () => {
   };
 
   const toggleBlockUser = async () => {
+    if (currentUser.id === 'guest') return;
+
     if (!activeRoom || activeRoom.type !== 'private' || !currentUser) return;
     
     const otherUserId = activeRoom.participants.find(id => id !== currentUser.id);
@@ -253,27 +287,9 @@ const App: React.FC = () => {
   }, [activeRoom, blockedUserIds, currentUser]);
 
   // --- RENDER LOGIC ---
-
-  // 1. Not Logged In -> Show STANDALONE Login Screen (Replaced Landing Page)
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Ambient Background Effects */}
-        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-workigom-green/5 rounded-full blur-[128px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[128px] pointer-events-none"></div>
-        
-        {/* Direct Login Form */}
-        <AuthModal isOpen={true} onClose={() => {}} isStandalone={true} />
-        
-        <div className="absolute bottom-6 text-center text-[10px] text-gray-600 font-mono tracking-widest uppercase">
-          Workigom Chat System v1.2
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Data Error State
-  if (dataError) {
+  
+  // Data Error State (Only if critical)
+  if (dataError && rooms.length === 0) {
     return (
       <div className="flex flex-col h-screen items-center justify-center bg-workigom-dark text-center p-4">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
@@ -285,17 +301,11 @@ const App: React.FC = () => {
         >
           Sayfayı Yenile
         </button>
-        <button 
-          onClick={handleLogout}
-          className="mt-4 text-sm text-gray-500 hover:text-white"
-        >
-          Çıkış Yap
-        </button>
       </div>
     );
   }
 
-  // 3. Logged In but loading room -> Loading Spinner
+  // Loading State
   if (!activeRoom) {
      return (
        <div className="flex flex-col h-screen items-center justify-center bg-workigom-dark gap-4">
@@ -303,15 +313,17 @@ const App: React.FC = () => {
          <p className="text-gray-400 text-sm font-medium animate-pulse">
            {dataLoading ? "Sohbet odaları yükleniyor..." : "Bağlantı kuruluyor..."}
          </p>
-         <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-500 mt-4 underline">İptal ve Çıkış</button>
        </div>
      );
   }
 
-  // 4. Main Chat Interface
+  // Main Chat Interface
   return (
     <div className="flex h-screen bg-workigom-dark text-slate-200 font-sans overflow-hidden">
       
+      {/* Auth Modal (Hidden by default, triggered manually) */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
       {/* Left Sidebar */}
       <aside className="hidden md:flex w-20 bg-[#0f0f12] border-r border-workigom-border flex-col items-center py-6 gap-8 shrink-0 z-30">
         <div className="w-10 h-10 bg-workigom-green rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,255,157,0.3)] cursor-pointer hover:scale-105 transition-transform">
@@ -326,13 +338,23 @@ const App: React.FC = () => {
         </nav>
 
         <div className="mb-4">
-             <div 
-               onClick={handleLogout}
-               className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-500 hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
-               title="Çıkış Yap"
-             >
-                <LogOut size={20} />
-             </div>
+             {currentUser.id !== 'guest' ? (
+               <div 
+                 onClick={handleLogout}
+                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-500 hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
+                 title="Çıkış Yap"
+               >
+                  <LogOut size={20} />
+               </div>
+             ) : (
+                <div 
+                 onClick={handleLoginClick}
+                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer"
+                 title="Giriş Yap"
+               >
+                  <LogIn size={20} />
+               </div>
+             )}
         </div>
       </aside>
 
@@ -444,7 +466,7 @@ const App: React.FC = () => {
 
                  <button 
                    onClick={() => setUserListOpen(!userListOpen)} 
-                   className={`lg:hidden p-2 rounded-lg transition-colors ${userListOpen ? 'bg-workigom-green/10 text-workigom-green' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                   className={`lg:hidden p-2 rounded-lg transition-colors ${userListOpen ? 'bg-workigom-green/10 text-workigom-green' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
                  >
                     <Users className="w-6 h-6" />
                  </button>
@@ -456,13 +478,24 @@ const App: React.FC = () => {
                     <span className="text-sm font-medium text-gray-300 hidden sm:block">{currentUser.name || currentUser.username}</span>
                     <span className="w-2 h-2 rounded-full bg-green-500 box-content border-2 border-[#0f0f12]"></span>
                  </div>
-                 <button 
-                   onClick={handleLogout}
-                   className="text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-full p-2 transition-colors hidden md:block"
-                   title="Çıkış Yap"
-                 >
-                    <LogOut className="w-5 h-5 rotate-180" />
-                 </button>
+                 
+                 {currentUser.id !== 'guest' ? (
+                   <button 
+                     onClick={handleLogout}
+                     className="text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-full p-2 transition-colors hidden md:block"
+                     title="Çıkış Yap"
+                   >
+                      <LogOut className="w-5 h-5 rotate-180" />
+                   </button>
+                 ) : (
+                    <button 
+                     onClick={handleLoginClick}
+                     className="text-green-500 hover:text-green-400 hover:bg-green-500/10 rounded-full p-2 transition-colors hidden md:block"
+                     title="Giriş Yap"
+                   >
+                      <LogIn className="w-5 h-5" />
+                   </button>
+                 )}
              </div>
           </div>
 
