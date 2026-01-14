@@ -86,9 +86,54 @@ const App: React.FC = () => {
     
     // DEMO DATA FALLBACK
     const demoRooms: Room[] = [
-        { id: 'demo_genel', name: 'Genel Sohbet', topic: 'Herkesin buluşma noktası', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
-        { id: 'demo_yazilim', name: 'Yazılım', topic: 'Kodlama ve teknoloji', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
-        { id: 'demo_muzik', name: 'Müzik & Sanat', topic: 'Sanat üzerine', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' }
+        { 
+          id: 'demo_genel', 
+          room_id: 'demo_genel',
+          name: 'Genel Sohbet', 
+          topic: 'Herkesin buluşma noktası', 
+          type: 'public', 
+          participants: [], 
+          active: true, 
+          created: '', 
+          updated: '', 
+          collectionId: '', 
+          collectionName: '',
+          is_muted: false,
+          ai_typing: false,
+          ai_user_id: ''
+        },
+        { 
+          id: 'demo_yazilim', 
+          room_id: 'demo_yazilim',
+          name: 'Yazılım', 
+          topic: 'Kodlama ve teknoloji', 
+          type: 'public', 
+          participants: [], 
+          active: true, 
+          created: '', 
+          updated: '', 
+          collectionId: '', 
+          collectionName: '',
+          is_muted: false,
+          ai_typing: false,
+          ai_user_id: ''
+        },
+        { 
+          id: 'demo_muzik', 
+          room_id: 'demo_muzik',
+          name: 'Müzik & Sanat', 
+          topic: 'Sanat üzerine', 
+          type: 'public', 
+          participants: [], 
+          active: true, 
+          created: '', 
+          updated: '', 
+          collectionId: '', 
+          collectionName: '',
+          is_muted: false,
+          ai_typing: false,
+          ai_user_id: ''
+        }
     ];
 
     try {
@@ -263,7 +308,22 @@ const App: React.FC = () => {
       }
     } catch (err) {
       const demoDmId = `dm_${targetUserId}`;
-      const demoRoom: Room = { id: demoDmId, name: targetUser?.name || 'User', topic: 'DM', type: 'private', participants: [currentUser.id, targetUserId], active: true, created: '', updated: '', collectionId: '', collectionName: '' };
+      const demoRoom: Room = { 
+        id: demoDmId, 
+        room_id: demoDmId,
+        name: targetUser?.name || 'User', 
+        topic: 'DM', 
+        type: 'private', 
+        participants: [currentUser.id, targetUserId], 
+        active: true, 
+        created: '', 
+        updated: '', 
+        collectionId: '', 
+        collectionName: '',
+        is_muted: false,
+        ai_typing: false,
+        ai_user_id: ''
+      };
       setRooms(prev => [...prev, demoRoom]);
       handleSwitchRoom(demoDmId);
     }

@@ -43,53 +43,61 @@ export const getUsers = async (): Promise<User[]> => {
 
 export const getPublicRooms = async (): Promise<Room[]> => {
   try {
+    // The new schema doesn't have a 'type' field, so we fetch all records from 'rooms'.
+    // We assume these are the configured public rooms.
     const records = await pb.collection('rooms').getFullList({
-      filter: 'type = "public"',
-      sort: 'created',
+      sort: '-created',
     });
-    return records as unknown as Room[];
+    
+    // Map the DB structure to our UI structure
+    return records.map((r: any) => ({
+        ...r,
+        // Map 'room_id' (e.g. 'room_china') to display name
+        name: r.room_id || 'İsimsiz Oda', 
+        topic: 'Genel Sohbet',
+        type: 'public',
+        participants: [],
+        active: true
+    })) as Room[];
+
   } catch (e: any) {
     return [];
   }
 };
 
 export const getPrivateRoom = async (currentUserId: string, targetUserId: string): Promise<Room | null> => {
-  try {
-      const records = await pb.collection('rooms').getList(1, 1, {
-        filter: `type = "private" && participants ~ "${currentUserId}" && participants ~ "${targetUserId}"`,
-      });
-      
-      if (records.items.length > 0) {
-        return records.items[0] as unknown as Room;
-      }
-      return null;
-  } catch (e) {
-      return null;
-  }
+  // DB schema 'rooms' does not have 'participants' field anymore based on screenshot.
+  // We return null to force fallback/demo mode for DMs or client-side handling.
+  return null;
 };
 
 export const createPrivateRoom = async (currentUserId: string, targetUser: User): Promise<Room> => {
-  try {
-    const data = {
+  // Since the backend 'rooms' collection lacks 'participants' and 'type',
+  // we cannot create a functional persistent private room in the DB matching the App's logic.
+  // We return a Mock Room object to allow the UI to open a temporary DM view.
+  return {
+      id: `dm_${currentUserId}_${targetUser.id}`,
+      room_id: `dm_${currentUserId}_${targetUser.id}`,
       name: targetUser.name || targetUser.username,
       topic: 'Özel Sohbet',
       type: 'private',
       participants: [currentUserId, targetUser.id],
-      active: true
-    };
-    
-    const record = await pb.collection('rooms').create(data);
-    return record as unknown as Room;
-  } catch (e) {
-    throw e;
-  }
+      active: true,
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+      collectionId: 'mock',
+      collectionName: 'rooms',
+      is_muted: false,
+      ai_typing: false,
+      ai_user_id: ''
+  } as Room;
 };
 
 // --- MESSAGES ---
 
 export const getMessages = async (roomId: string): Promise<Message[]> => {
   try {
-      // Filter updated to use 'room' instead of 'room_id'
+      // We assume 'room' field in messages corresponds to the Room's Record ID
       const records = await pb.collection('messages').getList(1, 50, {
         filter: `room = "${roomId}"`,
         sort: 'created', 
@@ -105,7 +113,7 @@ export const sendMessageToPB = async (
   text: string, 
   role: Role, 
   userId: string,
-  userInfo?: { name: string; avatar: string } // Helper to populate denormalized fields
+  userInfo?: { name: string; avatar: string }
 ): Promise<Message> => {
   
   const isUser = role === Role.USER;
@@ -131,7 +139,6 @@ export const sendMessageToPB = async (
   }
 
   try {
-    // New DB Structure Mapping
     const data = {
       text: text,
       room: roomId,
@@ -139,7 +146,7 @@ export const sendMessageToPB = async (
       senderName: senderName,
       senderAvatar: senderAvatar,
       isUser: isUser,
-      type: role // storing role as type (user, assistant, system)
+      type: role
     };
     
     const record = await pb.collection('messages').create(data);
@@ -168,7 +175,6 @@ export const subscribeToRoom = (roomId: string, callback: (msg: Message) => void
 
   try {
     return pb.collection('messages').subscribe('*', (e) => {
-      // Updated check: e.record.room instead of e.record.room_id
       if (e.action === 'create' && e.record.room === roomId) {
           callback(e.record as unknown as Message);
       }
