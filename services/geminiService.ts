@@ -4,17 +4,22 @@ import { Message, Role } from '../types';
 
 /**
  * Sends the chat history to the Gemini API and retrieves the response.
- * Uses the @google/genai SDK with the recommended stateless generateContent approach.
  */
 export const sendMessageToAI = async (history: Message[]): Promise<string> => {
   try {
-    // Initialize the GoogleGenAI client with the API key from the environment.
-    // We access process.env.API_KEY directly so that build tools/bundlers can correctly substitute it.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Safely check for API Key existence.
+    // The polyfill in index.html ensures process.env is accessible without crashing.
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
 
-    // 1. Prepare Content: Convert the app's message history to Gemini's 'Content' format.
-    // Gemini expects parts to be an array of objects with a 'text' property.
-    // We filter out system messages from the 'contents' array as they are handled in 'config'.
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing. Please configure process.env.API_KEY.");
+      return "Sistem Mesajı: API Anahtarı eksik. Sohbet botu şu an yanıt veremiyor.";
+    }
+
+    // Initialize the GoogleGenAI client
+    const ai = new GoogleGenAI({ apiKey });
+
+    // 1. Prepare Content
     const contents = history
       .filter(msg => msg.type !== Role.SYSTEM && msg.text && msg.text.trim() !== "")
       .map(msg => ({
@@ -22,7 +27,7 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
         parts: [{ text: msg.text }]
       }));
 
-    // 2. Extract System Instruction: Find the system message to set the persona.
+    // 2. Extract System Instruction
     const systemMessage = history.find(msg => msg.type === Role.SYSTEM);
     const systemInstruction = systemMessage ? systemMessage.text : undefined;
 
@@ -35,18 +40,13 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
       }
     });
 
-    // 4. Return the generated text.
-    // The .text property is a getter that safely extracts the string from the response candidate.
+    // 4. Return text
     return response.text || "";
 
   } catch (error: any) {
     console.error('Gemini Service Error:', error);
     
-    // Provide a more descriptive error if possible, but keep the UI clean.
-    if (error.toString().includes("API key")) {
-      return "Sistem Mesajı: API Anahtarı yapılandırmasında bir sorun var. (403/400)";
-    }
-    
+    // Provide a generic error message
     return "Üzgünüm, şu an bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.";
   }
 };

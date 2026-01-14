@@ -15,6 +15,11 @@
 
     <title>Workigom Chat | Güvenli Sohbet Platformu</title>
     
+    <!-- Polyfill for process.env to prevent ReferenceError in browser -->
+    <script>
+      window.process = window.process || { env: {} };
+    </script>
+
     <!-- Tailwind Plugins -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
