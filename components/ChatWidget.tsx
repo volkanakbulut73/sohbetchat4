@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X } from 'lucide-react';
+import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X, Terminal } from 'lucide-react';
 import { Message, Role, User } from '../types';
 import { sendMessageToAI } from '../services/geminiService';
 import { sendMessageToPB, pb } from '../services/pocketbase';
@@ -96,7 +96,6 @@ const ChatModule: React.FC<ChatModuleProps> = ({
     
     try {
       // 1. Send User Message to DB
-      // We pass user info for denormalization
       await sendMessageToPB(
         activeRoomId, 
         content, 
@@ -105,7 +104,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         { name: currentUser.name || currentUser.username, avatar: currentUser.avatar }
       );
       
-      // 2. Trigger AI Response (Frontend logic for demo)
+      // 2. Trigger AI Response
       setIsLoading(true);
 
       const tempHistory: Message[] = [
@@ -133,13 +132,13 @@ const ChatModule: React.FC<ChatModuleProps> = ({
             responseContent, 
             Role.ASSISTANT, 
             currentUser.id,
-            { name: 'Gemini', avatar: '' } // AI Info
+            { name: 'Grok', avatar: '' } // Updated Name
         );
 
       } catch (aiError) {
         console.error("AI Error", aiError);
         const errorMessage = aiError instanceof Error ? aiError.message : "Bağlantı hatası.";
-        await sendMessageToPB(activeRoomId, `Hata: ${errorMessage}`, Role.ASSISTANT, currentUser.id, { name: 'Gemini', avatar: '' });
+        await sendMessageToPB(activeRoomId, `Error: ${errorMessage}`, Role.ASSISTANT, currentUser.id, { name: 'Grok', avatar: '' });
       }
 
     } catch (error) {
@@ -166,9 +165,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
           const isUser = msg.type === Role.USER || msg.isUser === true;
           const isAssistant = msg.type === Role.ASSISTANT || msg.type === 'assistant';
           
-          // Use denormalized fields
-          const senderName = msg.senderName || (isAssistant ? "Gemini" : "Kullanıcı");
-          // Construct avatar URL if filename exists
+          const senderName = msg.senderName || (isAssistant ? "Grok" : "Kullanıcı");
           const senderAvatar = msg.senderAvatar 
             ? `${pb.baseUrl}/api/files/users/${msg.senderId}/${msg.senderAvatar}`
             : null;
@@ -184,10 +181,10 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                 
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden border
-                  ${isMe ? 'bg-gray-100 border-gray-200' : isAssistant ? 'bg-gradient-to-tr from-blue-500 to-purple-500 text-white border-transparent' : 'bg-white border-gray-200'}`}>
+                  ${isMe ? 'bg-gray-100 border-gray-200' : isAssistant ? 'bg-black text-white border-transparent' : 'bg-white border-gray-200'}`}>
                   {isAssistant ? (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <Sparkles size={20} className="text-white" />
+                    <div className="flex items-center justify-center w-full h-full bg-black">
+                      <Terminal size={18} className="text-white" />
                     </div>
                   ) : (
                     <img src={senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`} alt={senderName} className="w-full h-full object-cover" />
@@ -199,7 +196,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                   {!isMe && (
                     <span className="text-xs text-gray-500 font-medium ml-1 flex items-center gap-1">
                        {senderName}
-                       {isAssistant && <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[9px] px-1 rounded font-bold tracking-wider">AI</span>}
+                       {isAssistant && <span className="bg-black text-white text-[9px] px-1 rounded font-bold tracking-wider font-mono">AI</span>}
                     </span>
                   )}
 
@@ -208,7 +205,7 @@ const ChatModule: React.FC<ChatModuleProps> = ({
                     ${isMe 
                       ? 'bg-black text-white rounded-2xl rounded-tr-none font-medium' 
                       : isAssistant 
-                        ? 'bg-white text-gray-900 border border-gray-200 rounded-2xl rounded-tl-none font-medium'
+                        ? 'bg-gray-100 text-gray-800 border border-gray-200 rounded-2xl rounded-tl-none font-mono text-sm'
                         : 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-200'
                     }`}
                   >
@@ -231,15 +228,15 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {isLoading && (
           <div className="flex justify-start w-full animate-enter">
             <div className="flex gap-3 max-w-[70%]">
-               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-gradient-to-tr from-blue-500 to-purple-500 border-transparent overflow-hidden`}>
-                 <Sparkles size={20} className="text-white" />
+               <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold bg-black border-transparent overflow-hidden`}>
+                 <Terminal size={18} className="text-white" />
               </div>
               <div className="flex flex-col gap-1">
-                 <span className="text-xs text-gray-500 font-medium ml-1">Gemini</span>
-                 <div className="bg-white px-5 py-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-200 flex items-center gap-2 w-fit">
-                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></span>
+                 <span className="text-xs text-gray-500 font-medium ml-1">Grok</span>
+                 <div className="bg-gray-50 px-5 py-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-200 flex items-center gap-2 w-fit">
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce"></span>
                  </div>
               </div>
             </div>
