@@ -77,49 +77,27 @@ const App: React.FC = () => {
     setDataError(null);
     try {
       // Fetch Users
-      try {
-        const usersData = await getUsers();
-        setUsers(usersData);
-      } catch (e) {
-        console.warn("Failed to fetch users, using demo user list");
-        setUsers([
-           { id: 'u1', username: 'demo_user', name: 'Demo User', email: 'demo@test.com', created: '', updated: '', collectionId: '', collectionName: '' }
-        ]);
-      }
+      const usersData = await getUsers();
+      setUsers(usersData);
 
       // Fetch Blocked Users
       if (pb.authStore.model) {
-        try {
-          const blocks = await getBlockedUsers(pb.authStore.model.id);
-          setBlockedUserIds(new Set(blocks));
-        } catch (e) {
-          console.warn("Blocks fetch failed");
-        }
+        const blocks = await getBlockedUsers(pb.authStore.model.id);
+        setBlockedUserIds(new Set(blocks));
       }
 
       // Fetch Rooms
-      try {
-        const roomsData = await getPublicRooms();
-        if (roomsData.length > 0) {
-          setRooms(roomsData);
-          handleSwitchRoom(roomsData[0].id, roomsData);
-        } else {
-           // Fallback if empty array returned
-           throw new Error("No rooms found");
-        }
-      } catch (e) {
-         console.warn("Backend 404/Error on rooms, falling back to Demo Mode.");
-         const demoRooms: Room[] = [
-             { id: 'demo_genel', name: 'Genel Sohbet', topic: 'Herkesin buluşma noktası', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' },
-             { id: 'demo_yazilim', name: 'Yazılım', topic: 'Kodlama ve teknoloji', type: 'public', participants: [], active: true, created: '', updated: '', collectionId: '', collectionName: '' }
-         ];
-         setRooms(demoRooms);
-         handleSwitchRoom(demoRooms[0].id, demoRooms);
+      const roomsData = await getPublicRooms();
+      setRooms(roomsData);
+      
+      if (roomsData.length > 0) {
+        handleSwitchRoom(roomsData[0].id, roomsData);
+      } else {
+         setDataError("Hiç oda bulunamadı. Lütfen yöneticinizle iletişime geçin.");
       }
-
     } catch (err: any) {
-      console.error("Critical failure in loading app data", err);
-      setDataError("Uygulama verileri yüklenemedi. (Backend bağlantı hatası)");
+      console.error("Failed to load app data", err);
+      setDataError("Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
     } finally {
       setDataLoading(false);
     }
@@ -132,31 +110,22 @@ const App: React.FC = () => {
     // Load history first
     getMessages(activeRoomId).then(msgs => {
       setActiveRoomMessages(msgs);
-    }).catch(() => {
-       // Demo messages
-       setActiveRoomMessages([
-          { id: 'm1', content: 'Workigom Chat sistemine hoş geldiniz! (Demo Modu)', role: Role.SYSTEM, room_id: activeRoomId, user_id: 'system', created: new Date().toISOString(), updated: '', collectionId: '', collectionName: '' }
-       ]);
     });
 
     // Subscribe
-    try {
-        unsubscribeFromRoom(); // Unsub previous
-        subscribeToRoom(activeRoomId, (newMessage) => {
-          setActiveRoomMessages(prev => {
-            if (prev.find(m => m.id === newMessage.id)) return prev;
-            
-            // Enrich with user data if missing
-            const sender = users.find(u => u.id === newMessage.user_id);
-            if (sender) {
-              newMessage.expand = { user_id: sender };
-            }
-            return [...prev, newMessage];
-          });
-        });
-    } catch(e) {
-        console.warn("Realtime subscription failed (expected in demo mode)");
-    }
+    unsubscribeFromRoom(); // Unsub previous
+    subscribeToRoom(activeRoomId, (newMessage) => {
+      setActiveRoomMessages(prev => {
+        if (prev.find(m => m.id === newMessage.id)) return prev;
+        
+        // Enrich with user data if missing
+        const sender = users.find(u => u.id === newMessage.user_id);
+        if (sender) {
+           newMessage.expand = { user_id: sender };
+        }
+        return [...prev, newMessage];
+      });
+    });
 
     return () => {
       unsubscribeFromRoom();
@@ -217,11 +186,6 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to start DM", err);
-      // Demo fallback
-      const demoDmId = `dm_${targetUserId}`;
-      const demoRoom: Room = { id: demoDmId, name: targetUser?.name || 'User', topic: 'DM', type: 'private', participants: [currentUser.id, targetUserId], active: true, created: '', updated: '', collectionId: '', collectionName: '' };
-      setRooms(prev => [...prev, demoRoom]);
-      handleSwitchRoom(demoDmId);
     }
   };
 
