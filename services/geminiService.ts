@@ -46,12 +46,23 @@ export const sendMessageToAI = async (history: Message[]): Promise<string> => {
 
   } catch (error: any) {
     console.error('AI Service Error:', error);
+    const errString = error.toString();
     
-    // Check for specific API errors
-    if (error.toString().includes("403") || error.toString().includes("API key")) {
+    // Check for Quota/Rate Limit (429)
+    if (errString.includes("429") || errString.includes("ResourceExhausted") || errString.includes("quota")) {
+        return "Sistem: Ücretsiz kullanım kotası aşıldı (Hata 429). Lütfen bir süre bekleyip tekrar deneyin.";
+    }
+
+    // Check for API Key issues (400/403)
+    if (errString.includes("403") || errString.includes("API key") || errString.includes("400")) {
         return "Bağlantı Hatası: API Anahtarı geçersiz veya yetkisiz erişim.";
     }
 
-    return "Üzgünüm, şu an bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.";
+    // Check for Service Overload (503)
+    if (errString.includes("503")) {
+         return "Sistem: Servis şu an çok yoğun. Lütfen biraz sonra tekrar deneyin.";
+    }
+
+    return "Üzgünüm, şu an teknik bir sorun nedeniyle yanıt veremiyorum.";
   }
 };
