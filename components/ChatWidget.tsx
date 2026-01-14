@@ -1,33 +1,104 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Paperclip, Smile } from 'lucide-react';
-import { Message, Role } from '../types';
+import { Send, Loader2, Sparkles, Paperclip, Smile, Palette, X } from 'lucide-react';
+import { Message, Role, User } from '../types';
 import { sendMessageToAI } from '../services/xaiService';
-import { SYSTEM_PROMPT } from '../constants';
+import { sendMessageToPB, pb } from '../services/pocketbase';
 
 interface ChatModuleProps {
   roomName?: string;
+  messages: Message[];
+  currentUser: any;
+  activeRoomId: string;
   accentColor?: string;
 }
 
+const COLORS = [
+  '#000000', // Black (Default)
+  '#EF4444', // Red
+  '#F59E0B', // Amber
+  '#10B981', // Emerald
+  '#3B82F6', // Blue
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+];
+
+const EMOJI_CATEGORIES = [
+  {
+    name: 'Yüzler & Duygular',
+    emojis: [
+      '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', 
+      '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', 'ww',
+      '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', 
+      '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '🙄', '😯', '😦'
+    ]
+  },
+  {
+    name: 'İnsanlar & Vücut',
+    emojis: [
+      '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '👍', 
+      '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦵', '🦶', '👂', 
+      '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁', '👄', '💋', '👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👵', '🧓', 
+      '👴', '👲', '👳', '🧕', '👮', '👷', '💂', '🕵️', '👩‍⚕️', '👨‍⚕️', '👩‍🌾', '👨‍🌾', '👩‍🍳', '👨‍🍳'
+    ]
+  },
+  {
+    name: 'Doğa & Hayvanlar',
+    emojis: [
+      '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', 'cow', '🐷', '🐽', '🐸', '🐵', '🐵', '🙈', '🙉', 
+      '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', 
+      '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🕸', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', 
+      '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', 
+      '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', 
+      '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿', '🦔'
+    ]
+  },
+  {
+    name: 'Yiyecek & İçecek',
+    emojis: [
+      '🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🥝', '🍅', '🥥', '🥑', 
+      '🍆', '🥔', '🥕', '🌽', '🌶', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰', '🍞', '🥐', '🥖', '🥨', '🥯', 
+      '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔', '🍟', '🍕', '🌭', '🥪', '🌮', '🌯', '🥙', '🧆', '🥚', '🍳', 
+      '🥘', '🍲', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', 
+      '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', 
+      '🍭', '🍮', '🍯', '🍼', '🥛', '☕️', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🥤', '🧃'
+    ]
+  },
+  {
+    name: 'Aktivite & Spor',
+    emojis: [
+      '⚽️', '🏀', '🏈', '⚾️', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', 
+      '⛳️', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂', '🪂', '🏋️', '🤼', 
+      '🤸', '⛹️', '🤺', '🤾', '🏌️', '🏇', '🧘', '🏄', '🏊', '🤽', '🚣', '🧗', '🚵', '🚴', '🏆', '🥇', '🥈', '🥉', 
+      '🏅', '🎖', '🏵', '🎗', '🎫', '🎟', '🎪', '🤹', '🎭', '🩰', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', 
+      '🎺', '🎸', '🪕', '🎻', '🎲', '♟', '🎯', '🎳', '🎮', '🎰', '🧩'
+    ]
+  },
+  {
+    name: 'Nesneler & Semboller',
+    emojis: [
+      '⌚️', '📱', '📲', '💻', '⌨️', '🖥', '🖨', '🖱', '🖲', '🕹', '🗜', '💽', '💾', '💿', '📀', '📼', '📷', '📸', 
+      '📹', '🎥', '📽', '🎞', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙', '🎚', '🎛', '🧭', '⏱', '⏲', '⏰', '🕰', 
+      '⏳', '⌛️', '📡', '🔋', '🔌', '💡', '🔦', '🕯', '🪔', '🧯', '🛢', '💸', '💵', '💴', '💶', '💷', '💰', '💳', 
+      '💎', '⚖️', '🧰', '🔧', '🔨', '⚒', '🛠', '⛏', '🔩', '⚙️', '🧱', '⛓', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', 
+      '🗡', '⚔️', '🛡', '🚬', '⚰️', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳', '💊', '💉', '🩸', 
+      '🧬', '🦠', '🧫', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', 
+      '💖', '💘', '💝'
+    ]
+  }
+];
+
 const ChatModule: React.FC<ChatModuleProps> = ({ 
   roomName = "Chat", 
-  accentColor = "from-indigo-500 to-purple-600" 
+  messages,
+  currentUser,
+  activeRoomId
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: Role.SYSTEM,
-      content: SYSTEM_PROMPT,
-      timestamp: Date.now(),
-    },
-    {
-      role: Role.ASSISTANT,
-      content: "Merhaba! Ben Workigom AI. Size nasıl yardımcı olabilirim?",
-      timestamp: Date.now(),
-    },
-  ]);
-
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('#000000');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,42 +118,61 @@ const ChatModule: React.FC<ChatModuleProps> = ({
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || !currentUser) return;
 
-    const userMsg: Message = {
-      role: Role.USER,
-      content: inputValue.trim(),
-      timestamp: Date.now(),
-    };
+    const content = inputValue.trim();
+    const color = selectedColor !== '#000000' ? selectedColor : undefined;
 
-    const newHistory = [...messages, userMsg];
-    setMessages(newHistory);
     setInputValue('');
-    setIsLoading(true);
-
+    setShowColorPicker(false);
+    setShowEmojiPicker(false);
+    
     try {
-      const responseContent = await sendMessageToAI(newHistory);
+      // 1. Send User Message to DB
+      await sendMessageToPB(activeRoomId, content, Role.USER, currentUser.id, color);
       
-      const assistantMsg: Message = {
-        role: Role.ASSISTANT,
-        content: responseContent,
-        timestamp: Date.now(),
-      };
+      // 2. Trigger AI Response (Frontend logic for demo)
+      setIsLoading(true);
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      // Create a temporary history array including the new message for the AI context
+      const tempHistory: Message[] = [
+        ...messages,
+        { 
+          role: Role.USER, 
+          content, 
+          room_id: activeRoomId, 
+          user_id: currentUser.id, 
+          id: 'temp', 
+          created: '', 
+          updated: '', 
+          collectionId: '', 
+          collectionName: '' 
+        }
+      ];
+
+      try {
+        const responseContent = await sendMessageToAI(tempHistory);
+        await sendMessageToPB(activeRoomId, responseContent, Role.ASSISTANT, currentUser.id);
+
+      } catch (aiError) {
+        console.error("AI Error", aiError);
+        await sendMessageToPB(activeRoomId, "Bağlantı hatası: Yapay zeka yanıt veremedi.", Role.ASSISTANT, currentUser.id);
+      }
+
     } catch (error) {
-      const errorMsg: Message = {
-        role: Role.ASSISTANT,
-        content: "Bir bağlantı hatası oluştu.",
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      console.error("Message send failed", error);
+      alert("Mesaj gönderilemedi.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Filter system messages
+  const handleAddEmoji = (emoji: string) => {
+    setInputValue(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  // Filter system messages for display
   const displayMessages = messages.filter((m) => m.role !== Role.SYSTEM);
 
   return (
@@ -93,46 +183,56 @@ const ChatModule: React.FC<ChatModuleProps> = ({
         {displayMessages.map((msg, idx) => {
           const isUser = msg.role === Role.USER;
           const isAssistant = msg.role === Role.ASSISTANT;
+          
+          // Helper to get sender info
+          const senderName = isAssistant ? "Workigom AI" : (msg.expand?.user_id?.name || msg.expand?.user_id?.username || "Kullanıcı");
+          const senderAvatar = msg.expand?.user_id?.avatar 
+            ? `${pb.baseUrl}/api/files/users/${msg.expand?.user_id?.id}/${msg.expand?.user_id?.avatar}`
+            : null;
+          
+          // Identify if message is from "Me"
+          const isMe = msg.user_id === currentUser.id && !isAssistant;
 
           return (
             <div
-              key={idx}
-              className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-enter`}
-              style={{ animationDelay: `${idx * 0.05}s` }}
+              key={msg.id || idx}
+              className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-enter`}
             >
-              <div className={`flex max-w-[85%] md:max-w-[70%] gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`flex max-w-[85%] md:max-w-[70%] gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                 
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center text-xs font-bold shadow-sm overflow-hidden
-                  ${isUser ? 'bg-slate-100 border border-slate-200' : 'bg-white border border-indigo-100'}`}>
-                  {isUser ? (
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=romance" alt="User" className="w-full h-full" />
-                  ) : (
+                  ${isMe ? 'bg-slate-100 border border-slate-200' : 'bg-white border border-indigo-100'}`}>
+                  {isAssistant ? (
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Workigom&backgroundColor=transparent" alt="Bot" className="w-full h-full" />
+                  ) : (
+                    <img src={senderAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`} alt={senderName} className="w-full h-full object-cover" />
                   )}
                 </div>
 
                 <div className="flex flex-col gap-1 min-w-0">
                   {/* Sender Name (only for others) */}
-                  {!isUser && (
+                  {!isMe && (
                     <span className="text-xs text-gray-500 font-medium ml-1">
-                       {isAssistant ? "Workigom AI" : "User"}
+                       {senderName}
                     </span>
                   )}
 
                   {/* Bubble */}
                   <div className={`relative px-5 py-3.5 text-[15px] leading-relaxed shadow-sm transition-all
-                    ${isUser 
+                    ${isMe 
                       ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' 
                       : 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-none'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    <div className="whitespace-pre-wrap" style={{ color: msg.color || 'inherit' }}>
+                      {msg.content}
+                    </div>
                   </div>
                   
                   {/* Timestamp */}
-                  <div className={`text-[10px] text-gray-400 font-medium px-1 ${isUser ? 'text-right' : 'text-left'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <div className={`text-[10px] text-gray-400 font-medium px-1 ${isMe ? 'text-right' : 'text-left'}`}>
+                    {new Date(msg.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>
@@ -163,22 +263,88 @@ const ChatModule: React.FC<ChatModuleProps> = ({
 
       {/* --- Input Area --- */}
       <div className="bg-white p-4 md:px-8 md:py-6 z-10">
+        
+        {/* Color Palette Popup */}
+        {showColorPicker && (
+          <div className="absolute bottom-20 left-12 bg-white rounded-xl shadow-2xl border border-gray-100 p-3 flex gap-2 animate-enter z-20">
+            {COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => { setSelectedColor(color); setShowColorPicker(false); inputRef.current?.focus(); }}
+                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 shadow-sm ${selectedColor === color ? 'border-gray-900 scale-110 ring-2 ring-offset-2 ring-gray-200' : 'border-transparent'}`}
+                style={{ backgroundColor: color }}
+                type="button"
+                title={color}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Emoji Picker Popup */}
+        {showEmojiPicker && (
+          <div className="absolute bottom-20 right-4 sm:right-8 w-80 max-w-[calc(100vw-2rem)] h-96 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col animate-enter z-20 overflow-hidden">
+             {/* Header */}
+             <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-bold text-gray-700">Emoji Seç</span>
+                <button onClick={() => setShowEmojiPicker(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+             </div>
+             
+             {/* Content */}
+             <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                {EMOJI_CATEGORIES.map((category) => (
+                   <div key={category.name} className="mb-4">
+                      <h4 className="px-2 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider sticky top-0 bg-white/95 backdrop-blur-sm py-1 z-10">
+                        {category.name}
+                      </h4>
+                      <div className="grid grid-cols-7 gap-1">
+                        {category.emojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleAddEmoji(emoji)}
+                            className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                   </div>
+                ))}
+             </div>
+          </div>
+        )}
+
         <form
           onSubmit={handleSendMessage}
           className="relative flex items-center gap-2 bg-gray-100/70 border border-gray-200/50 rounded-full p-2 pl-4 focus-within:bg-white focus-within:border-gray-300 focus-within:shadow-sm transition-all"
         >
+          {/* Color Picker Toggle */}
+          <button 
+            type="button" 
+            onClick={() => { setShowColorPicker(!showColorPicker); setShowEmojiPicker(false); }}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+            title="Yazı Rengi"
+          >
+             <Palette className="w-5 h-5" style={{ color: selectedColor !== '#000000' ? selectedColor : undefined }} />
+          </button>
           
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Bir şeyler yaz..."
+            style={{ color: selectedColor }}
+            placeholder={`${roomName} odasına yaz...`}
             className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-gray-800 placeholder-gray-400 text-sm md:text-base py-2 min-w-0"
             disabled={isLoading}
           />
           
-          <button type="button" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors hidden sm:block">
+          <button 
+             type="button" 
+             onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowColorPicker(false); }}
+             className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
+          >
             <Smile className="w-5 h-5" />
           </button>
 
